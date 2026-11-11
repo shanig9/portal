@@ -1,0 +1,28 @@
+﻿# Installed dependencies and generated output
+**/node_modules/
+**/build/
+**/.dart_tool/
+**/.gradle/
+**/coverage/
+**/ephemeral/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.jks
+*.keystore
+**/key.properties
+**/local.properties
+.aws/
+.codex/
+
+# Local editor and OS state
+**/.idea/
+*.iml
+.DS_Store
+Thumbs.db
+*.log
