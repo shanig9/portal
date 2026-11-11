@@ -1,4 +1,4 @@
-﻿# Career Connect
+# Career Connect
 
 A job portal with separate Flutter frontends for employees and HR teams.
 
