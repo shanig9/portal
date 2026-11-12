@@ -1,3 +1,5 @@
+import 'employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
@@ -27,7 +29,7 @@ void showCreatePost(BuildContext context, EmployeeController state) {
                 Expanded(child: ui.heading('Create Post')),
                 IconButton(
                   onPressed: () => Navigator.pop(ctx),
-                  icon: const Icon(Icons.close),
+                  icon: const EmployeeIcon(Icons.close),
                 ),
               ],
             ),
@@ -51,7 +53,7 @@ void showCreatePost(BuildContext context, EmployeeController state) {
                   .map(
                     (e) => ActionChip(
                       label: Text(e),
-                      avatar: const Icon(Icons.add, size: 16),
+                      avatar: const EmployeeIcon(Icons.add, size: 16),
                       onPressed: () => ui.notice(
                         '$e attachments need a connected upload service',
                       ),

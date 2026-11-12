@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
 import '../widgets/auth_widgets.dart';
+import '../services/auth_service.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key, required this.state});
@@ -13,6 +14,28 @@ class RegistrationScreen extends StatefulWidget {
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final form = GlobalKey<FormState>();
   String name = '', email = '', mobile = '', password = '';
+  bool busy = false;
+  String? error;
+
+  Future<void> _register() async {
+    if (!form.currentState!.validate()) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final account = await widget.state.auth.register(name, email, password);
+      if (!mounted) return;
+      widget.state.authenticated(account, onboarding: true);
+      // A contact number is not a verified phone sign-in credential.
+      widget.state.data['Mobile Number'] = mobile.trim();
+    } catch (failure) {
+      if (mounted) setState(() => error = authErrorMessage(failure));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Form(
     key: form,
@@ -65,19 +88,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               ? null
               : 'Passwords do not match',
         ),
+        if (error != null) AuthError(message: error!),
         FilledButton(
-          onPressed: () {
-            if (!form.currentState!.validate()) return;
-            widget.state.data.addAll({
-              'Full Name': name.trim(),
-              'Email ID': email.trim(),
-              'Mobile Number': mobile.trim(),
-            });
-            widget.state.open('Personal Details');
-          },
-          child: const Text('Create Account'),
+          onPressed: busy ? null : _register,
+          child: Text(busy ? 'Creating account...' : 'Create Account'),
         ),
-        const SocialAuthButtons(registration: true),
+        SocialAuthButtons(
+          registration: true,
+          state: widget.state,
+          disabled: busy,
+          onBusyChanged: (value) => setState(() => busy = value),
+        ),
         TextButton(
           onPressed: () => widget.state.open('Login'),
           child: const Text('Already have an account? Login Now'),

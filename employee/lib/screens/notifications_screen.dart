@@ -1,3 +1,5 @@
+import '../widgets/employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
@@ -14,7 +16,7 @@ class NotificationsScreen extends StatelessWidget {
       ui.heading('Notifications'),
       ui.panel(
         const ListTile(
-          leading: Icon(Icons.work_outline, color: blue),
+          leading: EmployeeIcon(Icons.work_outline, color: blue),
           title: Text('Welcome to Career Connect'),
           subtitle: Text(
             'Complete your profile to discover relevant opportunities.',

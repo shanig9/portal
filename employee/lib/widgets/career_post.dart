@@ -1,3 +1,5 @@
+import 'employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
@@ -39,7 +41,7 @@ class CareerPost extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.more_horiz),
+              const EmployeeIcon(Icons.more_horiz),
             ],
           ),
           const SizedBox(height: 16),
@@ -51,6 +53,10 @@ class CareerPost extends StatelessWidget {
               margin: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
+                image: const DecorationImage(
+                  image: AssetImage('assets/images/career_mentor.jpg'),
+                  fit: BoxFit.cover,
+                ),
                 gradient: const LinearGradient(
                   colors: [Color(0xFF142D50), blue],
                 ),
@@ -58,14 +64,21 @@ class CareerPost extends StatelessWidget {
               child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.workspace_premium, size: 70, color: Colors.white),
+                  EmployeeIcon(
+                    Icons.play_circle_outline,
+                    size: 70,
+                    color: Colors.white,
+                  ),
                   SizedBox(height: 16),
-                  Text(
-                    'Build skills. Open doors.',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  Flexible(
+                    child: Text(
+                      'Build skills. Open doors.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -77,7 +90,7 @@ class CareerPost extends StatelessWidget {
             children: [
               TextButton.icon(
                 onPressed: () => state.update(() => state.liked = !state.liked),
-                icon: Icon(
+                icon: EmployeeIcon(
                   state.liked ? Icons.favorite : Icons.favorite_border,
                 ),
                 label: Text(state.liked ? 'Liked' : 'Like'),
@@ -87,13 +100,13 @@ class CareerPost extends StatelessWidget {
                   'Comment',
                   (v) => ui.notice('Comment added: $v'),
                 ),
-                icon: const Icon(Icons.chat_bubble_outline),
+                icon: const EmployeeIcon(Icons.chat_bubble_outline),
                 label: const Text('Comment'),
               ),
               IconButton(
                 tooltip: 'Save post',
                 onPressed: () => ui.notice('Post saved for this session'),
-                icon: const Icon(Icons.bookmark_border),
+                icon: const EmployeeIcon(Icons.bookmark_border),
               ),
             ],
           ),

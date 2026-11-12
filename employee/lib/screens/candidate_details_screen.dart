@@ -19,7 +19,7 @@ class CandidateDetailsScreen extends StatelessWidget {
               state.data['Job Title'] ?? 'Digital Marketing Executive',
             ),
             ui.caption('Pune · 2 years experience'),
-            ui.caption(state.data['Email ID'] ?? 'rohit.deshmukh@gmail.com'),
+            ui.caption(state.data['Email ID'] ?? 'rohit@example.com'),
           ],
         ),
       ),

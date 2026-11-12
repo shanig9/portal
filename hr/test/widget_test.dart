@@ -5,6 +5,9 @@ import 'package:hr/models.dart';
 import 'package:hr/screens.dart';
 import 'package:hr/job_screens.dart';
 import 'package:hr/profile_screens.dart';
+import 'package:hr/auth_service.dart';
+
+import 'fake_auth_service.dart';
 
 Finder field(String label) =>
     find.ancestor(of: find.text(label), matching: find.byType(TextFormField));
@@ -27,12 +30,10 @@ Future<void> tapVisible(WidgetTester tester, String label) async {
 }
 
 void main() {
-  testWidgets('Employer can explore the portal and open the job form', (
+  testWidgets('Signed-in employer restores the portal and opens the job form', (
     tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
-    expect(find.text('Welcome Employer'), findsOneWidget);
-    await tapVisible(tester, 'Explore frontend preview');
+    await tester.pumpWidget(MyApp(auth: signedInAuth()));
     expect(find.text('Job Applications'), findsOneWidget);
     expect(find.text('Sneha Kulkarni'), findsOneWidget);
     await tester.tap(find.text('Post Job'));
@@ -45,22 +46,30 @@ void main() {
   testWidgets('Login validates mobile number before showing OTP', (
     tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
+    final auth = FakeHrAuthService();
+    await tester.pumpWidget(MyApp(auth: auth));
     await tapVisible(tester, 'Login as Employer');
+    await tester.tap(find.text('Phone OTP'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Send OTP'));
     await tester.pumpAndSettle();
-    expect(find.text('Enter Mobile Number'), findsOneWidget);
-    await tester.enterText(find.byType(TextFormField), '9876543210');
+    expect(
+      find.text('Include your country code, for example +91.'),
+      findsOneWidget,
+    );
+    expect(auth.phoneCalls, 0);
+    await tester.enterText(find.byType(TextFormField), '+919876543210');
     await tester.tap(find.text('Send OTP'));
     await tester.pumpAndSettle();
     expect(find.text('Verify Mobile Number'), findsOneWidget);
+    expect(auth.phoneCalls, 1);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets(
     'Job creation returns a draft and profile edits can be cancelled',
     (tester) async {
-      await tester.pumpWidget(const MyApp());
-      await tapVisible(tester, 'Explore frontend preview');
+      await tester.pumpWidget(MyApp(auth: signedInAuth()));
       await tester.tap(find.text('Post Job'));
       await tester.pumpAndSettle();
       await tester.enterText(field('Job Title *'), 'Product Designer');
@@ -82,8 +91,7 @@ void main() {
   testWidgets('Job can be previewed, published, edited and deleted', (
     tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
-    await tapVisible(tester, 'Explore frontend preview');
+    await tester.pumpWidget(MyApp(auth: signedInAuth()));
     await tester.tap(find.text('Post Job'));
     await tester.pumpAndSettle();
     await tester.enterText(field('Job Title *'), 'New Engineer');
@@ -135,7 +143,7 @@ void main() {
         const WelcomeScreen(),
         const LoginScreen(),
         const RegistrationScreen(),
-        OtpScreen(company: company, phone: '9876543210'),
+        OtpScreen(company: company, phone: '+919876543210'),
         PortalScreen(company: company),
         const JobFormScreen(),
         JobDetailsScreen(job: Job()),
@@ -145,7 +153,12 @@ void main() {
         ),
       ];
       for (final screen in screens) {
-        await tester.pumpWidget(MaterialApp(home: screen));
+        await tester.pumpWidget(
+          HrAuthScope(
+            auth: FakeHrAuthService(),
+            child: MaterialApp(home: screen),
+          ),
+        );
         await tester.pumpAndSettle();
         expect(
           tester.takeException(),

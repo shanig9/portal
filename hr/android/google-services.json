@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "3132708867",
+    "project_id": "job-portal-54254",
+    "storage_bucket": "job-portal-54254.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:3132708867:android:820a898d8cfbe1ef2d9636",
+        "android_client_info": {
+          "package_name": "com.example.employee"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "3132708867-7u13jdrjcd3ak04tdrpke4eb7b85ts8c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbPp1DpBbhEJyhDJdBN-dDW7_8ZdsBlHE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "3132708867-7u13jdrjcd3ak04tdrpke4eb7b85ts8c.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

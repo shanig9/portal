@@ -1,3 +1,5 @@
+import '../widgets/employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
@@ -14,7 +16,7 @@ class MessagesScreen extends StatelessWidget {
         onChanged: (v) => state.update(() => state.data['chatQuery'] = v),
         decoration: const InputDecoration(
           hintText: 'Search messages',
-          prefixIcon: Icon(Icons.search),
+          prefixIcon: EmployeeIcon(Icons.search),
         ),
       ),
       const SizedBox(height: 16),
@@ -34,7 +36,7 @@ class MessagesScreen extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 subtitle: const Text('Let’s discuss your application.'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const EmployeeIcon(Icons.chevron_right),
                 onTap: () {
                   state.chat = e;
                   state.open('Conversation');

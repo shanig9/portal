@@ -1,3 +1,5 @@
+import 'widgets/employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import 'state/employee_controller.dart';
@@ -24,10 +26,13 @@ import 'screens/login_screen.dart';
 import 'screens/registration_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/phone_login_screen.dart';
+import 'services/auth_service.dart';
 
 class EmployeeShell extends StatefulWidget {
-  const EmployeeShell({super.key, this.initialPage = 'Login'});
+  const EmployeeShell({super.key, this.initialPage = 'Login', this.auth});
   final String initialPage;
+  final AuthService? auth;
   @override
   State<EmployeeShell> createState() => _EmployeeShellState();
 }
@@ -37,7 +42,7 @@ class _EmployeeShellState extends State<EmployeeShell> {
   @override
   void initState() {
     super.initState();
-    state = EmployeeController(page: widget.initialPage);
+    state = EmployeeController(page: widget.initialPage, auth: widget.auth);
   }
 
   @override
@@ -57,6 +62,7 @@ class _EmployeeShellState extends State<EmployeeShell> {
         'Registration',
         'Forgot Password',
         'Account',
+        'Phone Login',
       ].contains(state.page);
       return Scaffold(
         appBar: AppBar(
@@ -67,7 +73,7 @@ class _EmployeeShellState extends State<EmployeeShell> {
                 )
               : IconButton(
                   onPressed: state.back,
-                  icon: const Icon(Icons.arrow_back),
+                  icon: const EmployeeIcon(Icons.arrow_back),
                 ),
           title: Text(
             auth ? 'Career Connect' : state.page,
@@ -81,17 +87,18 @@ class _EmployeeShellState extends State<EmployeeShell> {
                   style: const TextStyle(color: blue),
                 ),
               ),
-            if (!auth)
+            if (!auth && !setup)
               IconButton(
                 tooltip: 'Notifications',
                 onPressed: () => state.open('Notifications'),
-                icon: const Icon(Icons.notifications_none),
+                icon: const EmployeeIcon(Icons.notifications_none),
               ),
-            IconButton(
-              tooltip: 'All screens',
-              onPressed: ui.menu,
-              icon: const Icon(Icons.grid_view_rounded),
-            ),
+            if (!auth && !setup)
+              IconButton(
+                tooltip: 'All screens',
+                onPressed: ui.menu,
+                icon: const EmployeeIcon(Icons.grid_view_rounded),
+              ),
           ],
         ),
         body: Center(
@@ -100,9 +107,12 @@ class _EmployeeShellState extends State<EmployeeShell> {
             child: Column(
               children: [
                 if (setup)
-                  LinearProgressIndicator(
-                    value: (state.steps.indexOf(state.page) + 1) / 6,
-                    color: blue,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(56, 0, 56, 8),
+                    child: LinearProgressIndicator(
+                      value: (state.steps.indexOf(state.page) + 1) / 6,
+                      color: blue,
+                    ),
                   ),
                 Expanded(child: screenFor()),
               ],
@@ -120,23 +130,23 @@ class _EmployeeShellState extends State<EmployeeShell> {
                 }),
                 destinations: const [
                   NavigationDestination(
-                    icon: Icon(Icons.home_outlined),
+                    icon: EmployeeIcon(Icons.home_outlined),
                     label: 'Home',
                   ),
                   NavigationDestination(
-                    icon: Icon(Icons.work_outline),
+                    icon: EmployeeIcon(Icons.work_outline),
                     label: 'Jobs',
                   ),
                   NavigationDestination(
-                    icon: Icon(Icons.video_library_outlined),
+                    icon: EmployeeIcon(Icons.video_library_outlined),
                     label: 'Reels',
                   ),
                   NavigationDestination(
-                    icon: Icon(Icons.chat_bubble_outline),
+                    icon: EmployeeIcon(Icons.chat_bubble_outline),
                     label: 'Messages',
                   ),
                   NavigationDestination(
-                    icon: Icon(Icons.person_outline),
+                    icon: EmployeeIcon(Icons.person_outline),
                     label: 'Profile',
                   ),
                 ],
@@ -147,7 +157,7 @@ class _EmployeeShellState extends State<EmployeeShell> {
                 tooltip: 'Create Post',
                 backgroundColor: blue,
                 foregroundColor: Colors.white,
-                child: const Icon(Icons.add),
+                child: const EmployeeIcon(Icons.add),
               )
             : null,
       );
@@ -190,6 +200,7 @@ class _EmployeeShellState extends State<EmployeeShell> {
     'Skills' => SkillsScreen(key: ValueKey(state.page), state: state),
     'Resume' => ResumeScreen(key: ValueKey(state.page), state: state),
     'Login' => LoginScreen(key: ValueKey(state.page), state: state),
+    'Phone Login' => PhoneLoginScreen(key: ValueKey(state.page), state: state),
     'Registration' => RegistrationScreen(
       key: ValueKey(state.page),
       state: state,

@@ -1,3 +1,5 @@
+import '../widgets/employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
@@ -18,7 +20,7 @@ class SkillsScreen extends StatelessWidget {
           onSubmitted: state.addSkill,
           decoration: const InputDecoration(
             hintText: 'Type a skill and press enter',
-            prefixIcon: Icon(Icons.search),
+            prefixIcon: EmployeeIcon(Icons.search),
           ),
         ),
         ui.heading('Selected Skills (${state.skills.length}/10)'),

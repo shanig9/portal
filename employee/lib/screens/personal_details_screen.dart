@@ -20,7 +20,7 @@ class PersonalDetailsScreen extends StatelessWidget {
         ui.field('Date of Birth', value: '15 March 1998'),
         ui.choices('Gender', ['Male', 'Female', 'Other']),
         ui.field('Mobile Number', value: '+91 98765 43210', required: true),
-        ui.field('Email ID', value: 'rohit.deshmukh@gmail.com', required: true),
+        ui.field('Email ID', value: 'rohit@example.com', required: true),
         ui.field('Current Location', value: 'Pune, Maharashtra'),
       ],
     );

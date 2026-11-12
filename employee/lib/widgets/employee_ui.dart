@@ -1,3 +1,5 @@
+import 'employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
@@ -15,7 +17,7 @@ class EmployeeUi {
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 20,
+          fontSize: 17,
           fontWeight: FontWeight.w800,
           color: Color(0xFF14243C),
         ),
@@ -33,22 +35,32 @@ class EmployeeUi {
   Widget panel(Widget child) {
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
-      child: Padding(padding: const EdgeInsets.all(16), child: child),
+      child: Padding(padding: const EdgeInsets.all(12), child: child),
     );
   }
 
   Widget list(List<Widget> children) {
-    return ListView(padding: const EdgeInsets.all(20), children: children);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: children,
+    );
   }
 
   Widget avatar([String text = 'RD', double radius = 24]) {
     return CircleAvatar(
       radius: radius,
       backgroundColor: const Color(0xFFE0F0FF),
-      child: Text(
-        text,
-        style: const TextStyle(color: blue, fontWeight: FontWeight.bold),
-      ),
+      backgroundImage: text == 'RD'
+          ? const AssetImage('assets/images/profile.jpg')
+          : text == 'A'
+          ? const AssetImage('assets/images/community.jpg')
+          : null,
+      child: text == 'RD' || text == 'A'
+          ? null
+          : Text(
+              text,
+              style: const TextStyle(color: blue, fontWeight: FontWeight.bold),
+            ),
     );
   }
 
@@ -59,7 +71,7 @@ class EmployeeUi {
   ]) {
     return FilledButton.icon(
       onPressed: action,
-      icon: Icon(icon, size: 18),
+      icon: EmployeeIcon(icon, size: 18),
       label: Text(text),
     );
   }
@@ -85,7 +97,11 @@ class EmployeeUi {
                 ? 'Enter a valid email'
                 : null
           : null,
-      decoration: InputDecoration(labelText: '$label${required ? ' *' : ''}'),
+      decoration: InputDecoration(
+        labelText: '$label${required ? ' *' : ''}',
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        prefixIcon: EmployeeIcon(fieldIcon(label)),
+      ),
     ),
   );
   Widget select(String label, List<String> options) {
@@ -95,7 +111,11 @@ class EmployeeUi {
         key: ValueKey('${state.page}-$label'),
         initialValue: state.data[label] ?? options.first,
         isExpanded: true,
-        decoration: InputDecoration(labelText: label),
+        decoration: InputDecoration(
+          labelText: label,
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          prefixIcon: EmployeeIcon(fieldIcon(label)),
+        ),
         items: options
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
             .toList(),
@@ -126,6 +146,35 @@ class EmployeeUi {
     );
   }
 
+  IconData fieldIcon(String label) {
+    final name = label.toLowerCase();
+    if (name.contains('email')) return Icons.mail_outline;
+    if (name.contains('phone') || name.contains('mobile')) {
+      return Icons.phone_outlined;
+    }
+    if (name.contains('date') ||
+        name.contains('birth') ||
+        name.contains('year')) {
+      return Icons.calendar_month_outlined;
+    }
+    if (name.contains('location')) return Icons.location_on_outlined;
+    if (name.contains('company') || name.contains('college')) {
+      return Icons.business_outlined;
+    }
+    if (name.contains('degree') ||
+        name.contains('qualification') ||
+        name.contains('course')) {
+      return Icons.school_outlined;
+    }
+    if (name.contains('job') ||
+        name.contains('mode') ||
+        name.contains('type')) {
+      return Icons.work_outline;
+    }
+    if (name.contains('resume')) return Icons.description_outlined;
+    return Icons.person_outline;
+  }
+
   void notice(String text) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
@@ -153,7 +202,7 @@ class EmployeeUi {
               ].map(
                 (name) => ListTile(
                   title: Text(name),
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: const EmployeeIcon(Icons.chevron_right),
                   onTap: () {
                     Navigator.pop(ctx);
                     state.open(name);
@@ -186,14 +235,17 @@ class EmployeeUi {
         if (state.data['extra$type'] != null)
           ListTile(
             title: Text(state.data['extra$type']!),
-            leading: const Icon(Icons.check_circle_outline, color: blue),
+            leading: const EmployeeIcon(
+              Icons.check_circle_outline,
+              color: blue,
+            ),
           ),
         OutlinedButton.icon(
           onPressed: () => entryDialog(
             'Add $type',
             (v) => state.update(() => state.data['extra$type'] = v),
           ),
-          icon: const Icon(Icons.add_circle_outline),
+          icon: const EmployeeIcon(Icons.add_circle_outline),
           label: Text('Add Another $type (Optional)'),
         ),
       ],

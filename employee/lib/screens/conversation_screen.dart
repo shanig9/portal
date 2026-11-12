@@ -1,3 +1,5 @@
+import '../widgets/employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
@@ -43,7 +45,7 @@ class ConversationScreen extends StatelessWidget {
             },
             decoration: const InputDecoration(
               hintText: 'Type a message and press enter',
-              suffixIcon: Icon(Icons.send, color: blue),
+              suffixIcon: EmployeeIcon(Icons.send, color: blue),
             ),
           ),
         ),

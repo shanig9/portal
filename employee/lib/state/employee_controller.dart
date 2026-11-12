@@ -1,7 +1,58 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
+
 class EmployeeController extends ChangeNotifier {
-  EmployeeController({this.page = 'Login'});
+  EmployeeController({this.page = 'Login', AuthService? auth})
+    : auth = auth ?? FirebaseAuthService() {
+    final account = this.auth.currentAccount;
+    if (account != null) {
+      _setAccount(account);
+      if (page == 'Login') page = 'Home';
+    }
+  }
+  final AuthService auth;
+  AuthAccount? account;
+
+  void _setAccount(AuthAccount value) {
+    account = value;
+    data['Full Name'] = value.name ?? '';
+    data['Email ID'] = value.email ?? '';
+    data['Mobile Number'] = value.phone ?? '';
+  }
+
+  void authenticated(AuthAccount value, {bool onboarding = false}) =>
+      update(() {
+        _setAccount(value);
+        page = onboarding ? 'Personal Details' : 'Home';
+        tab = 0;
+        history.clear();
+      });
+
+  Future<void> signOut() async {
+    await auth.signOut();
+    update(() {
+      account = null;
+      data.clear();
+      saved.clear();
+      applied.clear();
+      posts.clear();
+      messages.clear();
+      skills
+        ..clear()
+        ..addAll(_defaultSkills);
+      query = '';
+      filter = 'All jobs';
+      applicationFilter = 'All';
+      resume = false;
+      liked = false;
+      following = false;
+      page = 'Login';
+      tab = 0;
+      history.clear();
+    });
+  }
+
   final tabs = ['Home', 'Jobs', 'Reels', 'Messages', 'Profile'];
   final steps = [
     'Personal Details',
@@ -14,13 +65,14 @@ class EmployeeController extends ChangeNotifier {
   final history = <String>[];
   final saved = <String>{}, applied = <String>{};
   final posts = <String>[], messages = <String>[];
-  final skills = <String>[
+  static const _defaultSkills = <String>[
     'Digital Marketing',
     'Social Media Marketing',
     'SEO',
     'Google Ads',
     'Content Creation',
   ];
+  final skills = <String>[..._defaultSkills];
   final data = <String, String>{};
   final form = GlobalKey<FormState>();
   String page;

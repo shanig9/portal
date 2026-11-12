@@ -1,3 +1,5 @@
+import '../widgets/employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
@@ -11,16 +13,40 @@ class ReferralsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ui = EmployeeUi(context, state);
     return ui.list([
-      const SizedBox(height: 16),
-      const Icon(Icons.card_giftcard, size: 90, color: blue),
-      ui.heading('Refer Friends & Earn Points!'),
-      ui.caption(
-        'Invite your friends to join the app and get rewarded with points.',
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEAF6FF),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ui.heading('Refer Friends\n& Earn Points!'),
+                  ui.caption(
+                    'Invite your friends to join Career Connect and get rewarded with points.',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Image.asset(
+                'assets/images/referral_rewards.png',
+                height: 170,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ],
+        ),
       ),
       const SizedBox(height: 24),
       ui.panel(
         const ListTile(
-          leading: Icon(Icons.people_outline, color: blue, size: 40),
+          leading: EmployeeIcon(Icons.people_outline, color: blue, size: 40),
           title: Text('You refer a friend'),
           subtitle: Text('You earn 100 points'),
         ),

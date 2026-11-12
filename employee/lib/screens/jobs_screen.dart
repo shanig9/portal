@@ -1,3 +1,5 @@
+import '../widgets/employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
@@ -26,7 +28,7 @@ class JobsScreen extends StatelessWidget {
         onChanged: (v) => state.update(() => state.query = v),
         decoration: const InputDecoration(
           hintText: 'Search jobs, companies, or skills…',
-          prefixIcon: Icon(Icons.search),
+          prefixIcon: EmployeeIcon(Icons.search),
         ),
       ),
       const SizedBox(height: 12),
@@ -48,7 +50,7 @@ class JobsScreen extends StatelessWidget {
           IconButton(
             tooltip: 'Change job layout',
             onPressed: () => state.update(() => state.compact = !state.compact),
-            icon: Icon(
+            icon: EmployeeIcon(
               state.compact
                   ? Icons.view_agenda_outlined
                   : Icons.view_list_outlined,
@@ -97,7 +99,7 @@ class JobsScreen extends StatelessWidget {
                           ? state.saved.remove(j.$1)
                           : state.saved.add(j.$1);
                     }),
-                    icon: Icon(
+                    icon: EmployeeIcon(
                       state.saved.contains(j.$1)
                           ? Icons.bookmark
                           : Icons.bookmark_border,

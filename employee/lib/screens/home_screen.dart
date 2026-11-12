@@ -1,3 +1,5 @@
+import '../widgets/employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
@@ -13,7 +15,7 @@ class HomeScreen extends StatelessWidget {
       TextField(
         decoration: const InputDecoration(
           hintText: 'Search posts, jobs, or people',
-          prefixIcon: Icon(Icons.search),
+          prefixIcon: EmployeeIcon(Icons.search),
         ),
         onSubmitted: (v) {
           state.query = v;

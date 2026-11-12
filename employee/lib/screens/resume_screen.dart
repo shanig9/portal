@@ -1,3 +1,5 @@
+import '../widgets/employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
@@ -19,7 +21,7 @@ class ResumeScreen extends StatelessWidget {
           'Add your updated resume to complete your profile and apply for jobs easily.',
         ),
         const SizedBox(height: 24),
-        const Icon(Icons.upload_file, size: 100, color: blue),
+        const EmployeeIcon(Icons.upload_file, size: 100, color: blue),
         const SizedBox(height: 24),
         ui.panel(
           Column(
@@ -36,11 +38,14 @@ class ResumeScreen extends StatelessWidget {
         ),
         if (state.resume)
           ListTile(
-            leading: const Icon(Icons.picture_as_pdf, color: blue),
+            leading: const EmployeeIcon(Icons.picture_as_pdf, color: blue),
             title: Text(
               state.data['Resume filename'] ?? 'Rohit_Deshmukh_Resume.pdf',
             ),
-            trailing: const Icon(Icons.check_circle, color: Colors.green),
+            trailing: const EmployeeIcon(
+              Icons.check_circle,
+              color: Colors.green,
+            ),
           ),
         ui.caption(
           'Actual file upload and storage require a connected backend.',

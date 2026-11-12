@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'auth_screens.dart' show signOutEmployer;
+
 import 'models.dart';
 import 'widgets.dart';
 import 'main.dart';
@@ -128,6 +130,11 @@ class EmployerProfile extends StatelessWidget {
         ),
       ),
       primary('Edit Profile', () => edit(context)),
+      TextButton.icon(
+        onPressed: () => signOutEmployer(context),
+        icon: const Icon(Icons.logout),
+        label: const Text('Sign out'),
+      ),
     ],
   );
 }

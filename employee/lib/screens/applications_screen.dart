@@ -1,3 +1,5 @@
+import '../widgets/employee_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
@@ -58,7 +60,7 @@ class ApplicationsScreen extends StatelessWidget {
                   'Career Connect · Pune\n${state.applied.contains(e.value) ? 'Applied just now' : ['Shortlisted', 'Under Review', 'Interview Scheduled', 'Not Selected', 'Application Closed'][e.key % 5]}',
                 ),
                 isThreeLine: true,
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const EmployeeIcon(Icons.chevron_right),
                 onTap: () {
                   state.selectedJob = e.value;
                   state.open('Job Details');

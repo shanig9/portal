@@ -18,29 +18,51 @@ class ProfileSetupScaffold extends StatelessWidget {
     final ui = EmployeeUi(context, state);
     return Form(
       key: state.form,
-      child: ui.list([
-        ui.heading(
-          index == 5 ? 'Upload Your Resume' : 'Make your profile stand out',
-        ),
-        ui.caption('Step ${index + 1}: ${state.steps[index]}'),
-        const SizedBox(height: 24),
-        ...children,
-        const SizedBox(height: 32),
-        ui.button(index == 5 ? 'Save & Complete Profile' : 'Save & Next', () {
-          if (!state.form.currentState!.validate()) return;
-          if (index < 5) {
-            state.open(state.steps[index + 1]);
-          } else {
-            state.update(() {
-              state.page = 'Profile';
-              state.tab = 4;
-              state.history.clear();
-            });
-            ui.notice('Profile saved for this session');
-          }
-        }, index == 5 ? Icons.check : Icons.arrow_forward),
-        TextButton(onPressed: state.back, child: const Text('Back')),
-      ]),
+      child: Column(
+        children: [
+          Expanded(
+            child: ui.list([
+              if (index == 5) ui.heading('Upload Your Resume'),
+              ui.caption(switch (index) {
+                0 => 'Add your personal details',
+                1 => "Tell us what kind of job you’re looking for",
+                2 => 'Add your educational details',
+                3 => 'Add your work experience details',
+                4 => 'Add your key skills to match relevant jobs',
+                _ => 'Complete your profile and apply for jobs easily.',
+              }),
+              const SizedBox(height: 24),
+              ...children,
+            ]),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ui.button(
+                  index == 5 ? 'Save & Complete Profile' : 'Save & Next',
+                  () {
+                    if (!state.form.currentState!.validate()) return;
+                    if (index < 5) {
+                      state.open(state.steps[index + 1]);
+                    } else {
+                      state.update(() {
+                        state.page = 'Profile';
+                        state.tab = 4;
+                        state.history.clear();
+                      });
+                      ui.notice('Profile saved for this session');
+                    }
+                  },
+                  index == 5 ? Icons.check : Icons.arrow_forward,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

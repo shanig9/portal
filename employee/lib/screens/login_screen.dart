@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
 import '../widgets/auth_widgets.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.state});
@@ -14,6 +15,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final form = GlobalKey<FormState>();
   String identity = '';
   String password = '';
+  bool busy = false;
+  String? error;
+
+  Future<void> _login() async {
+    if (!form.currentState!.validate()) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final account = await widget.state.auth.signIn(identity, password);
+      if (mounted) widget.state.authenticated(account);
+    } catch (failure) {
+      if (mounted) setState(() => error = authErrorMessage(failure));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Form(
     key: form,
@@ -34,10 +54,11 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 24),
         AuthField(
-          label: 'Email or Mobile Number',
+          label: 'Email Address',
           icon: Icons.mail_outline,
+          keyboard: TextInputType.emailAddress,
           onChanged: (value) => identity = value,
-          validator: validateIdentity,
+          validator: validateEmail,
         ),
         AuthField(
           label: 'Password',
@@ -52,20 +73,24 @@ class _LoginScreenState extends State<LoginScreen> {
             child: const Text('Forgot Password?'),
           ),
         ),
+        if (error != null) AuthError(message: error!),
         FilledButton(
-          onPressed: () {
-            if (form.currentState!.validate()) widget.state.showHome();
-          },
-          child: const Text('Login'),
+          onPressed: busy ? null : _login,
+          child: Text(busy ? 'Signing in...' : 'Login'),
         ),
-        const SocialAuthButtons(registration: false),
+        SocialAuthButtons(
+          registration: false,
+          state: widget.state,
+          disabled: busy,
+          onBusyChanged: (value) => setState(() => busy = value),
+        ),
         TextButton(
           onPressed: () => widget.state.open('Registration'),
           child: const Text('New to the app? Register Now'),
         ),
         TextButton(
-          onPressed: widget.state.showHome,
-          child: const Text('Explore the preview'),
+          onPressed: busy ? null : () => widget.state.open('Phone Login'),
+          child: const Text('Sign in with phone OTP'),
         ),
       ],
     ),
