@@ -1,3 +1,5 @@
+import 'hr_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import 'main.dart';
@@ -166,13 +168,13 @@ class _JobFormScreenState extends State<JobFormScreen> {
             if (detailed)
               OutlinedButton.icon(
                 onPressed: () => pickDate(false),
-                icon: const Icon(Icons.calendar_month),
+                icon: const HrIcon(Icons.calendar_month),
                 label: Text('Live: ${dateLabel(draft.live)}'),
               ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: () => pickDate(true),
-              icon: const Icon(Icons.calendar_month),
+              icon: const HrIcon(Icons.calendar_month),
               label: Text('Expiry: ${dateLabel(draft.expiry)}'),
             ),
           ]),
@@ -374,6 +376,14 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Row(
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: HrIcon(
+                        hrFieldIcon(entry.key),
+                        size: 22,
+                        color: brandBlue,
+                      ),
+                    ),
                     Expanded(
                       child: Text(
                         entry.key,
@@ -416,12 +426,12 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
             AdaptivePair(
               first: OutlinedButton.icon(
                 onPressed: edit,
-                icon: const Icon(Icons.edit_outlined),
+                icon: const HrIcon(Icons.edit_outlined),
                 label: const Text('Edit Job'),
               ),
               second: TextButton.icon(
                 onPressed: delete,
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                icon: const HrIcon(Icons.delete_outline, color: Colors.red),
                 label: const Text(
                   'Delete Job',
                   style: TextStyle(color: Colors.red),

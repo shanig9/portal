@@ -38,7 +38,11 @@ Only Android Firebase configuration is supplied. Web and iOS need their own Fire
 
 The bottom navigation opens Home, Post Job, and Profile. The dashboard's Your Jobs section opens each job's details and editing controls.
 
-Authentication is connected to Firebase and its session persists across restarts. Company profile edits, jobs, and applications still use local preview data; they reset when the app restarts. Messaging and uploads are not connected. The welcome illustration, logo, and candidate avatars use Flutter-drawn artwork and initials in place of original artwork and photos.
+Authentication is connected to Firebase and its session persists across restarts. Company profile edits, jobs, and applications still use local preview data; they reset when the app restarts. Messaging and uploads are not connected. The welcome illustration and SVG icons come from the repository's shared `app aset portal` asset package. Career Connect uses its own brand mark and candidate initials.
+
+## Shared assets and layouts
+
+The local `career_connect_assets` dependency points to `../app aset portal`; keep that directory alongside `hr` when checking out or building the app. Assets are bundled from that source rather than duplicated inside HR. `HrIcon` centers SVG artwork at 24 logical pixels by default, including in input fields. Profile icon tiles use a 42–48 pixel background with 24 pixel artwork. The supplied HR screenshots guide layout only; Career Connect branding and example.com contact details are retained.
 
 ## Validation
 

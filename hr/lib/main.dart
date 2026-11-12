@@ -72,7 +72,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: brandBlue),
-          scaffoldBackgroundColor: const Color(0xFFF9FBFF),
+          scaffoldBackgroundColor: const Color(0xFFFAFCFF),
           textTheme: ThemeData.light().textTheme.apply(
             bodyColor: ink,
             displayColor: ink,
@@ -81,10 +81,15 @@ class MyApp extends StatelessWidget {
             backgroundColor: Color(0xFFF9FBFF),
             foregroundColor: ink,
             centerTitle: false,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
           ),
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
             fillColor: Colors.white,
+            isDense: true,
+            prefixIconColor: brandBlue,
+            floatingLabelBehavior: FloatingLabelBehavior.always,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 15,
@@ -120,6 +125,19 @@ class MyApp extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(22),
               side: const BorderSide(color: Color(0xFFE6EEFC)),
+            ),
+          ),
+          navigationBarTheme: const NavigationBarThemeData(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            indicatorColor: Color(0xFFE2F0FF),
+            height: 76,
+          ),
+          chipTheme: ChipThemeData(
+            backgroundColor: const Color(0xFFE7F3FF),
+            side: const BorderSide(color: Color(0xFFD2E7FF)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
             ),
           ),
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'main.dart';
+import 'hr_icon.dart';
 
 void go(BuildContext context, Widget screen) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -49,7 +50,7 @@ class PageBody extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 680),
           child: ListView(
-            padding: const EdgeInsets.all(22),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
             children: children,
           ),
         ),
@@ -82,7 +83,7 @@ class _WavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final path = Path()
-      ..moveTo(0, size.height * .86)
+      ..moveTo(0, size.height * .88)
       ..cubicTo(
         size.width * .28,
         size.height * .75,
@@ -101,6 +102,26 @@ class _WavePainter extends CustomPainter {
       ..lineTo(0, size.height)
       ..close();
     canvas.drawPath(path, Paint()..color = const Color(0xFFEAF4FF));
+    final foreground = Path()
+      ..moveTo(0, size.height * .9)
+      ..cubicTo(
+        size.width * .25,
+        size.height * .8,
+        size.width * .4,
+        size.height * 1.04,
+        size.width * .7,
+        size.height * .93,
+      )
+      ..quadraticBezierTo(
+        size.width * .9,
+        size.height * .86,
+        size.width,
+        size.height * .91,
+      )
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(foreground, Paint()..color = const Color(0xFFDDEEFF));
   }
 
   @override
@@ -112,7 +133,7 @@ Widget heading(String text) => Padding(
   child: Text(
     text,
     style: const TextStyle(
-      fontSize: 27,
+      fontSize: 24,
       fontWeight: FontWeight.w900,
       letterSpacing: -.6,
     ),
@@ -125,7 +146,19 @@ Widget card(Widget child) => Card(
 );
 Widget primary(String label, VoidCallback action) => Padding(
   padding: const EdgeInsets.symmetric(vertical: 10),
-  child: FilledButton(onPressed: action, child: Text(label)),
+  child: DecoratedBox(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(28),
+      gradient: const LinearGradient(
+        colors: [Color(0xFF0099FF), Color(0xFF0050ED)],
+      ),
+    ),
+    child: FilledButton(
+      style: FilledButton.styleFrom(backgroundColor: Colors.transparent),
+      onPressed: action,
+      child: Text(label),
+    ),
+  ),
 );
 Widget section(String label, List<Widget> children) => card(
   Column(
@@ -184,7 +217,11 @@ Widget input(
       }
       return null;
     },
-    decoration: InputDecoration(labelText: '$label${required ? ' *' : ''}'),
+    decoration: InputDecoration(
+      labelText: '$label${required ? ' *' : ''}',
+      prefixIcon: lines == 1 ? HrIcon(hrFieldIcon(label)) : null,
+      alignLabelWithHint: lines > 1,
+    ),
   ),
 );
 
@@ -198,7 +235,10 @@ Widget dropdown(
   child: DropdownButtonFormField<String>(
     initialValue: value,
     isExpanded: true,
-    decoration: InputDecoration(labelText: label),
+    decoration: InputDecoration(
+      labelText: label,
+      prefixIcon: HrIcon(hrFieldIcon(label)),
+    ),
     items: options
         .map(
           (item) => DropdownMenuItem(
@@ -232,6 +272,23 @@ class AdaptivePair extends StatelessWidget {
               Expanded(child: second),
             ],
           ),
+  );
+}
+
+class HrIconTile extends StatelessWidget {
+  const HrIconTile(this.icon, {super.key, this.size = 48});
+  final IconData icon;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: const Color(0xFFE9F4FF),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: HrIcon(icon, size: 24, color: brandBlue),
   );
 }
 

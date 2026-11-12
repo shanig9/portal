@@ -1,3 +1,5 @@
+import 'hr_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import 'main.dart';
@@ -18,7 +20,21 @@ class WelcomeScreen extends StatelessWidget {
           const SizedBox(height: 24),
           const Brand(),
           const SizedBox(height: 28),
-          heading('Welcome Employer'),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 18),
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: 'Welcome '),
+                  TextSpan(
+                    text: 'Employer',
+                    style: TextStyle(color: brandBlue),
+                  ),
+                ],
+              ),
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+            ),
+          ),
           muted('Hire the right talent, faster and easier.'),
           const SizedBox(height: 26),
           ...[
@@ -39,46 +55,29 @@ class WelcomeScreen extends StatelessWidget {
             ),
           ].map(
             (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 22),
+              padding: const EdgeInsets.only(bottom: 14),
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE4F2FF),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(item.$1, color: brandBlue, size: 30),
-                ),
+                leading: HrIconTile(item.$1),
                 title: Text(
                   item.$2,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                    fontSize: 16,
                   ),
                 ),
                 subtitle: muted(item.$3),
               ),
             ),
           ),
-          Container(
-            height: 170,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              gradient: const LinearGradient(
-                colors: [Color(0xFFEAF5FF), Color(0xFFD5E9FF)],
-              ),
-            ),
-            child: const Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(Icons.laptop_mac, size: 145, color: Color(0xFF426BB1)),
-                Positioned(
-                  right: 35,
-                  top: 14,
-                  child: Icon(Icons.person_search, size: 90, color: brandBlue),
-                ),
-              ],
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.asset(
+              'Blue Laptop Candidate Search Illustration.png',
+              package: 'career_connect_assets',
+              height: 180,
+              fit: BoxFit.contain,
+              semanticLabel: 'Find candidates for your team',
             ),
           ),
           const SizedBox(height: 22),
@@ -171,7 +170,7 @@ class _PortalScreenState extends State<PortalScreen> {
               ),
             ),
           ),
-          icon: const Icon(Icons.notifications_none),
+          icon: const HrIcon(Icons.notifications_none),
         ),
       ],
     ),
@@ -219,7 +218,7 @@ class _PortalScreenState extends State<PortalScreen> {
                   IconButton(
                     tooltip: 'Post a job',
                     onPressed: postJob,
-                    icon: const Icon(Icons.add_circle, color: brandBlue),
+                    icon: const HrIcon(Icons.add_circle, color: brandBlue),
                   ),
                 ],
               ),
@@ -258,17 +257,17 @@ class _PortalScreenState extends State<PortalScreen> {
       },
       destinations: const [
         NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home),
+          icon: HrIcon(Icons.home_outlined),
+          selectedIcon: HrIcon(Icons.home),
           label: 'Home',
         ),
         NavigationDestination(
-          icon: Icon(Icons.add_circle, color: brandBlue, size: 34),
+          icon: HrIcon(Icons.add_circle, color: brandBlue, size: 34),
           label: 'Post Job',
         ),
         NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          selectedIcon: Icon(Icons.person),
+          icon: HrIcon(Icons.person_outline),
+          selectedIcon: HrIcon(Icons.person),
           label: 'Profile',
         ),
       ],
@@ -321,7 +320,7 @@ class ApplicantTile extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right),
+          const HrIcon(Icons.chevron_right, size: 18),
         ],
       ),
     ),
@@ -357,7 +356,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
             onChanged: (value) => setState(() => query = value),
             decoration: const InputDecoration(
               hintText: 'Search candidates or roles',
-              prefixIcon: Icon(Icons.search),
+              prefixIcon: HrIcon(Icons.search),
             ),
           ),
           const SizedBox(height: 16),
@@ -417,7 +416,7 @@ class _ApplicantScreenState extends State<ApplicantScreen> {
       children: [
         const CircleAvatar(
           radius: 42,
-          child: Icon(Icons.person_outline, size: 44),
+          child: HrIcon(Icons.person_outline, size: 44),
         ),
         heading(widget.applicant.name),
         muted(widget.applicant.role),

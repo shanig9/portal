@@ -7,6 +7,7 @@ import 'models.dart';
 import 'profile_screens.dart' show companyFields;
 import 'screens.dart' show PortalScreen, WelcomeScreen;
 import 'widgets.dart';
+import 'hr_icon.dart';
 
 Company companyForAccount(HrAccount account) => Company()
   ..name = account.name ?? 'Your company'
@@ -88,6 +89,7 @@ class _AuthInputState extends State<AuthInput> {
           (value) => (value?.isEmpty ?? true) ? 'Enter ${widget.label}' : null,
       decoration: InputDecoration(
         labelText: widget.label,
+        prefixIcon: HrIcon(hrFieldIcon(widget.label)),
         suffixIcon: widget.password
             ? IconButton(
                 tooltip: visible
@@ -162,6 +164,8 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           const Brand(),
           heading('Employer Login'),
+          muted('Sign in to your company account and start hiring.'),
+          const SizedBox(height: 20),
           SegmentedButton<bool>(
             segments: const [
               ButtonSegment(value: true, label: Text('Email')),
@@ -213,11 +217,39 @@ class _LoginScreenState extends State<LoginScreen> {
                   : () => go(context, const ResetPasswordScreen()),
               child: const Text('Forgot Password?'),
             ),
-          TextButton(
-            onPressed: busy
-                ? null
-                : () => go(context, const RegistrationScreen()),
-            child: const Text('Register as Employer'),
+          const SizedBox(height: 24),
+          card(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const HrIconTile(Icons.person_outline),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'New to Career Connect?',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      muted(
+                        'Create an employer account and start hiring today.',
+                      ),
+                      TextButton(
+                        onPressed: busy
+                            ? null
+                            : () => go(context, const RegistrationScreen()),
+                        child: const Text('Register as Employer'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -286,6 +318,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         children: [
           const Brand(),
           heading('Employer Registration'),
+          muted('Create your company account and start hiring.'),
+          const SizedBox(height: 20),
           SegmentedButton<bool>(
             segments: const [
               ButtonSegment(value: true, label: Text('Email')),

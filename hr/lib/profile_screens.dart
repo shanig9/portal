@@ -1,3 +1,5 @@
+import 'hr_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import 'auth_screens.dart' show signOutEmployer;
@@ -85,19 +87,19 @@ class EmployerProfile extends StatelessWidget {
           children: [
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.business, color: brandBlue, size: 44),
+              leading: const HrIconTile(Icons.business),
               title: Text(
                 company.name,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 20,
+                  fontSize: 17,
                 ),
               ),
               subtitle: Text(company.industry),
               trailing: IconButton(
                 tooltip: 'Edit Profile',
                 onPressed: () => edit(context),
-                icon: const Icon(Icons.edit_outlined, color: brandBlue),
+                icon: const HrIcon(Icons.edit_outlined, color: brandBlue),
               ),
             ),
             const Divider(height: 32),
@@ -113,13 +115,17 @@ class EmployerProfile extends StatelessWidget {
                 children: [
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                    leading: Icon(item.$1, color: brandBlue),
+                    leading: HrIconTile(item.$1, size: 42),
                     title: Text(
                       item.$2,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    subtitle: Text(item.$3),
-                    trailing: const Icon(Icons.chevron_right),
+                    subtitle: Text(
+                      item.$3,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: const HrIcon(Icons.chevron_right, size: 18),
                     onTap: () => edit(context),
                   ),
                   const Divider(height: 1),
@@ -132,7 +138,7 @@ class EmployerProfile extends StatelessWidget {
       primary('Edit Profile', () => edit(context)),
       TextButton.icon(
         onPressed: () => signOutEmployer(context),
-        icon: const Icon(Icons.logout),
+        icon: const HrIcon(Icons.logout),
         label: const Text('Sign out'),
       ),
     ],
@@ -177,7 +183,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       key: form,
       child: PageBody(
         children: [
-          card(const Brand()),
+          card(
+            Row(
+              children: [
+                const BrandMark(),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        draft.name,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      muted(draft.industry),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 16),
           ...companyFields(draft),
           primary('Save Changes', save),
