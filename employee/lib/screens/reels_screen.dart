@@ -1,11 +1,11 @@
-import '../widgets/employee_icon.dart';
-
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 
+import '../services/reels_service.dart';
 import '../state/employee_controller.dart';
-import '../theme.dart';
 
-class ReelsScreen extends StatelessWidget {
+class ReelsScreen extends StatefulWidget {
   const ReelsScreen({
     super.key,
     required this.state,
@@ -15,322 +15,399 @@ class ReelsScreen extends StatelessWidget {
   final EmployeeController state;
   final bool fullScreen;
   final PageController? pageController;
-
-  void _openViewer(BuildContext context, int index) {
-    Navigator.of(context, rootNavigator: true).push<void>(
-      MaterialPageRoute(
-        builder: (_) => _ReelViewer(state: state, initialIndex: index),
-      ),
-    );
-  }
-
-  static const _reels = [
-    (
-      category: 'Interview',
-      title: 'Your next interview.\nYour best first impression.',
-      description:
-          'Prepare your story. Research the company. Ask thoughtful questions.',
-      icon: Icons.record_voice_over,
-    ),
-    (
-      category: 'Job Tips',
-      title: 'Make your resume\nstand out.',
-      description: 'Highlight your results. Tailor your skills to the role. Keep it clear.',
-      icon: Icons.description_outlined,
-    ),
-    (
-      category: 'Career',
-      title: 'Build skills.\nOpen new doors.',
-      description:
-          'Learn something new. Put it into practice. Share your progress.',
-      icon: Icons.trending_up,
-    ),
-    (
-      category: 'Interview',
-      title: 'Tell your story\nwith confidence.',
-      description:
-          'Describe the situation, your actions, and the impact you made.',
-      icon: Icons.chat_bubble_outline,
-    ),
-    (
-      category: 'Job Tips',
-      title: 'Find a role\nthat fits you.',
-      description:
-          'Explore the team, understand the role, and ask about growth.',
-      icon: Icons.work_outline,
-    ),
-    (
-      category: 'Career',
-      title: 'Grow your\nprofessional network.',
-      description: 'Start a conversation. Exchange ideas. Stay connected.',
-      icon: Icons.people_outline,
-    ),
-  ];
-
   @override
-  Widget build(BuildContext context) {
-    final category = state.data['reelCategory'] ?? 'For You';
-    final reels = _reels
-        .where((reel) => category == 'For You' || reel.category == category)
-        .toList();
-    final content = Column(
-      children: [
-        if (!fullScreen)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              spacing: 8,
-              children: ['For You', 'Job Tips', 'Interview', 'Career']
-                  .map(
-                    (name) => ChoiceChip(
-                      label: Text(name),
-                      selected: category == name,
-                      onSelected: (_) =>
-                          state.update(() => state.data['reelCategory'] = name),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        Expanded(
-          child: PageView.builder(
-            key: ValueKey(category),
-            controller: pageController,
-            scrollDirection: Axis.vertical,
-            itemCount: reels.length,
-            itemBuilder: (context, index) {
-              final reel = reels[index];
-              final likeKey = 'reelLiked:${reel.title}';
-              final liked = state.data[likeKey] == 'true';
-              return GestureDetector(
-                onTap: fullScreen ? null : () => _openViewer(context, index),
-                child: Padding(
-                  padding: fullScreen
-                      ? EdgeInsets.zero
-                      : const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(fullScreen ? 0 : 24),
-                      image: const DecorationImage(
-                        image: AssetImage('assets/images/career_mentor.jpg'),
-                        fit: BoxFit.cover,
-                        colorFilter: ColorFilter.mode(
-                          Color(0x990B2340),
-                          BlendMode.darken,
-                        ),
-                      ),
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF142B4B), blue],
-                      ),
-                    ),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) => SingleChildScrollView(
-                        physics: const NeverScrollableScrollPhysics(),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: constraints.maxHeight,
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              24,
-                              fullScreen
-                                  ? MediaQuery.paddingOf(context).top + 64
-                                  : 24,
-                              24,
-                              fullScreen
-                                  ? MediaQuery.paddingOf(context).bottom + 24
-                                  : 24,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        '${reel.category} · CAREER CLASS',
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      '${index + 1} / ${reels.length}',
-                                      style: const TextStyle(
-                                        color: Colors.white70,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 24,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      EmployeeIcon(
-                                        reel.icon,
-                                        size: 64,
-                                        color: Colors.white70,
-                                      ),
-                                      const SizedBox(height: 24),
-                                      Text(
-                                        reel.title,
-                                        style: const TextStyle(
-                                          fontSize: 30,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        reel.description,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          height: 1.6,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Expanded(
-                                          child: Text(
-                                            'Career Connect',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                        IconButton(
-                                          tooltip: liked
-                                              ? 'Unlike reel'
-                                              : 'Like reel',
-                                          onPressed: () => state.update(
-                                            () => state.data[likeKey] = (!liked)
-                                                .toString(),
-                                          ),
-                                          icon: EmployeeIcon(
-                                            liked
-                                                ? Icons.favorite
-                                                : Icons.favorite_border,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    TextButton.icon(
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      onPressed: () => state.update(
-                                        () =>
-                                            state.following = !state.following,
-                                      ),
-                                      icon: EmployeeIcon(
-                                        state.following
-                                            ? Icons.check
-                                            : Icons.add,
-                                      ),
-                                      label: Text(
-                                        state.following
-                                            ? 'Following Career Connect'
-                                            : 'Follow Career Connect',
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      !fullScreen
-                                          ? 'Tap to open full screen'
-                                          : index < reels.length - 1
-                                          ? 'Swipe up for next reel'
-                                          : 'Swipe down for previous reel',
-                                      style: const TextStyle(
-                                        color: Colors.white70,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        if (!fullScreen)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text(
-              'Illustrated previews. Video playback needs a connected media source.',
-              style: TextStyle(fontSize: 12),
-            ),
-          ),
-      ],
-    );
-    if (!fullScreen) return content;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Positioned.fill(child: content),
-          Positioned(
-            top: MediaQuery.paddingOf(context).top + 8,
-            left: 8,
-            child: IconButton(
-              tooltip: 'Back to reels',
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const EmployeeIcon(Icons.arrow_back, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  State<ReelsScreen> createState() => _ReelsScreenState();
 }
 
-class _ReelViewer extends StatefulWidget {
-  const _ReelViewer({required this.state, required this.initialIndex});
-  final EmployeeController state;
-  final int initialIndex;
+class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
+  final _service = ReelsService();
+  final _reels = <Reel>[];
+  bool _loading = false, _uploading = false, _foreground = true;
+  String? _error, _cursor;
+  int _active = 0;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _load();
+  }
 
   @override
-  State<_ReelViewer> createState() => _ReelViewerState();
-}
-
-class _ReelViewerState extends State<_ReelViewer> {
-  late final PageController _controller = PageController(
-    initialPage: widget.initialIndex,
-  );
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (mounted) {
+      setState(() => _foreground = state == AppLifecycleState.resumed);
+    }
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _load({bool more = false}) async {
+    if (_loading) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final page = await _service.list(cursor: more ? _cursor : null);
+      if (!mounted) return;
+      setState(() {
+        if (!more) {
+          _reels.clear();
+          _active = 0;
+        }
+        _reels.addAll(
+          page.items.where((item) => !_reels.any((r) => r.id == item.id)),
+        );
+        _cursor = page.nextCursor;
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _error = error.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _upload() async {
+    setState(() {
+      _uploading = true;
+      _foreground = false;
+    });
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'mp4', 'mov', 'webm'],
+      );
+      if (file == null || !mounted) return;
+      final size = await file.length();
+      if (size == null || size > 50 * 1024 * 1024) {
+        throw Exception('Files must be 50 MB or smaller.');
+      }
+      if (!mounted) return;
+      final caption = await showDialog<String>(
+        context: context,
+        builder: (_) => const _CaptionDialog(),
+      );
+      if (caption == null) return;
+      final reel = await _service.upload(await file.readAsBytes(), file.name, caption);
+      if (!mounted) return;
+      setState(() {
+        _reels.insert(0, reel);
+        _active = 0;
+        _error = null;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Your reel is published.')));
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Exception: ', '')),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _uploading = false;
+          _foreground = true;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text('Career Connect Reels\nVideos up to 60 seconds'),
+              ),
+              IconButton(
+                tooltip: 'Refresh reels',
+                onPressed: _loading ? null : () => _load(),
+                icon: const Icon(Icons.refresh),
+              ),
+              FilledButton.icon(
+                onPressed: _uploading ? null : _upload,
+                icon: const Icon(Icons.add),
+                label: Text(_uploading ? 'Uploading...' : 'Upload'),
+              ),
+            ],
+          ),
+        ),
+        if (_uploading || _loading) const LinearProgressIndicator(),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                Text(_error!),
+                TextButton(
+                  onPressed: () => _load(more: _reels.isNotEmpty),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: _reels.isEmpty
+              ? Center(
+                  child: Text(
+                    _loading
+                        ? 'Loading reels...'
+                        : 'No reels yet. Share your first image or video.',
+                  ),
+                )
+              : PageView.builder(
+                  key: ValueKey(_reels.first.id),
+                  controller: widget.pageController,
+                  scrollDirection: Axis.vertical,
+                  itemCount: _reels.length,
+                  onPageChanged: (index) {
+                    setState(() => _active = index);
+                    if (index >= _reels.length - 2 && _cursor != null) {
+                      _load(more: true);
+                    }
+                  },
+                  itemBuilder: (context, index) => _ReelCard(
+                    key: ValueKey(_reels[index].id),
+                    reel: _reels[index],
+                    active: index == _active && _foreground && !_uploading,
+                  ),
+                ),
+        ),
+        if (_cursor != null && !_loading)
+          TextButton(
+            onPressed: () => _load(more: true),
+            child: const Text('Load more reels'),
+          ),
+      ],
+    );
+    if (!widget.fullScreen) return content;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Career Connect Reels')),
+      body: content,
+    );
+  }
+}
+
+class _CaptionDialog extends StatefulWidget {
+  const _CaptionDialog();
+  @override
+  State<_CaptionDialog> createState() => _CaptionDialogState();
+}
+
+class _CaptionDialogState extends State<_CaptionDialog> {
+  final _caption = TextEditingController();
+  @override
+  void dispose() {
+    _caption.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: widget.state,
-    builder: (context, _) => ReelsScreen(
-      state: widget.state,
-      fullScreen: true,
-      pageController: _controller,
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Share a reel'),
+    content: TextField(
+      controller: _caption,
+      maxLength: 500,
+      maxLines: 3,
+      decoration: const InputDecoration(
+        labelText: 'Caption',
+        helperText: 'Videos must be 60 seconds or shorter.',
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.pop(context, _caption.text.trim()),
+        child: const Text('Publish'),
+      ),
+    ],
+  );
+}
+
+class _ReelCard extends StatefulWidget {
+  const _ReelCard({super.key, required this.reel, required this.active});
+  final Reel reel;
+  final bool active;
+  @override
+  State<_ReelCard> createState() => _ReelCardState();
+}
+
+class _ReelCardState extends State<_ReelCard> {
+  VideoPlayerController? _video;
+  bool _failed = false, _paused = false, _muted = true;
+  @override
+  void initState() {
+    super.initState();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReelCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active) {
+      _paused = false;
+      _sync();
+    }
+  }
+
+  Future<void> _sync() async {
+    if (widget.reel.type != 'video') return;
+    if (!widget.active) {
+      final old = _video;
+      _video = null;
+      await old?.dispose();
+      return;
+    }
+    if (_video != null) return;
+    final controller = VideoPlayerController.networkUrl(
+      Uri.parse(widget.reel.url),
+    );
+    _video = controller;
+    try {
+      await controller.initialize();
+      if (!mounted || _video != controller || !widget.active) return;
+      await controller.setLooping(true);
+      await controller.setVolume(_muted ? 0 : 1);
+      if (!mounted || _video != controller || !widget.active) return;
+      await controller.play();
+      if (mounted) setState(() => _failed = false);
+    } catch (_) {
+      if (mounted && _video == controller) setState(() => _failed = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _video?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: Colors.black,
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        if (widget.reel.type == 'image')
+          Image.network(
+            widget.reel.url,
+            fit: BoxFit.contain,
+            errorBuilder: (_, error, stack) => const Center(
+              child: Text(
+                'Image unavailable',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          )
+        else if (_failed)
+          Center(
+            child: TextButton(
+              onPressed: () async {
+                final old = _video;
+                _video = null;
+                await old?.dispose();
+                if (!mounted) return;
+                setState(() => _failed = false);
+                _sync();
+              },
+              child: const Text('Playback failed. Tap to retry'),
+            ),
+          )
+        else if (_video?.value.isInitialized == true)
+          Center(
+            child: AspectRatio(
+              aspectRatio: _video!.value.aspectRatio,
+              child: VideoPlayer(_video!),
+            ),
+          )
+        else if (widget.active)
+          const Center(child: CircularProgressIndicator()),
+        const IgnorePointer(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.center,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Colors.black87],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 20,
+          right: 20,
+          bottom: 24,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.reel.author,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                widget.reel.caption,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white),
+              ),
+              if (_video?.value.isInitialized == true)
+                Row(
+                  children: [
+                    IconButton(
+                      tooltip: _paused ? 'Play reel' : 'Pause reel',
+                      onPressed: () {
+                        setState(() => _paused = !_paused);
+                        _paused ? _video!.pause() : _video!.play();
+                      },
+                      icon: Icon(
+                        _paused ? Icons.play_arrow : Icons.pause,
+                        color: Colors.white,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: _muted ? 'Unmute reel' : 'Mute reel',
+                      onPressed: () {
+                        setState(() => _muted = !_muted);
+                        _video!.setVolume(_muted ? 0 : 1);
+                      },
+                      icon: Icon(
+                        _muted ? Icons.volume_off : Icons.volume_up,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              const Text(
+                'Swipe up for more',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
+        ),
+      ],
     ),
   );
 }

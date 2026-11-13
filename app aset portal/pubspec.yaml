@@ -1,0 +1,38 @@
+name: career_connect_assets
+description: Shared artwork and icons for Career Connect apps.
+publish_to: none
+version: 1.0.0
+environment:
+  sdk: ^3.13.3
+dependencies:
+  flutter:
+    sdk: flutter
+flutter:
+  assets:
+    - briefcase-business.svg
+    - building.svg
+    - building-complex.svg
+    - layers.svg
+    - calendar-days.svg
+    - map-pin.svg
+    - phone-call.svg
+    - mail.svg
+    - lock.svg
+    - file-text.svg
+    - circle-plus.svg
+    - bell-dot.svg
+    - graduation-cap.svg
+    - award.svg
+    - indian-rupee.svg
+    - hash.svg
+    - laptop-minimal.svg
+    - trash.svg
+    - upload.svg
+    - search_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg
+    - home_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg
+    - person_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg
+    - arrow_back_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg
+    - arrow_forward_ios_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg
+    - edit_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg
+    - logout_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg
+    - Blue Laptop Candidate Search Illustration.png

@@ -3,31 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:employee/main.dart';
 
 void main() {
-  testWidgets('Reels open full screen, swipe, and return to the tab', (
-    tester,
-  ) async {
+  testWidgets('Reels show connection guidance and keep navigation available', (tester) async {
     await tester.pumpWidget(const MyApp(initialPage: 'Reels'));
-    await tester.tap(
-      find.text('Your next interview.\nYour best first impression.'),
-    );
     await tester.pumpAndSettle();
-    expect(find.byType(NavigationBar).hitTestable(), findsNothing);
-    expect(find.byTooltip('Back to reels'), findsOneWidget);
-    await tester.drag(find.byType(PageView).last, const Offset(0, -500));
-    await tester.pumpAndSettle();
-    expect(
-      find.text('Make your resume\nstand out.').hitTestable(),
-      findsOneWidget,
-    );
-    await tester.tap(find.byTooltip('Like reel').last);
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('Unlike reel').hitTestable(), findsOneWidget);
-    await tester.tap(find.byTooltip('Back to reels'));
-    await tester.pumpAndSettle();
+    expect(find.text('The reels service is not connected yet.'), findsOneWidget);
+    expect(find.text('Upload'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
     expect(find.byType(NavigationBar).hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
-
   testWidgets('Shared navigation opens each main screen', (tester) async {
     await tester.pumpWidget(const MyApp(initialPage: 'Home'));
     for (final name in ['Jobs', 'Reels', 'Messages', 'Profile', 'Home']) {

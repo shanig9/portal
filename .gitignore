@@ -19,6 +19,8 @@
 **/local.properties
 .aws/
 .codex/
+firebase/*firebase-adminsdk*.json
+**/*service-account*.json
 
 # Local editor and OS state
 **/.idea/
@@ -26,3 +28,4 @@
 .DS_Store
 Thumbs.db
 *.log
+server/data/

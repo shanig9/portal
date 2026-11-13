@@ -4,9 +4,9 @@ A job portal with separate Flutter frontends for employees and HR teams.
 
 - [Employee app](employee/README.md): job discovery, career feed, profile setup, applications, messages, login, and registration.
 - [HR app](hr/README.md): employer onboarding, application review, job management, and company profiles.
-- `server/`: initial Node.js package with Express installed; backend implementation is pending.
+- `server/`: Express API for authenticated Cloudinary image and video uploads and a paginated reels feed. See [media API setup](server/README.md).
 
-The applications currently use local preview data. Authentication, uploads, messaging, and persistent storage will be connected after frontend completion.
+Most application screens use local preview data. The employee app includes Firebase authentication and an API-backed reels feed with image uploads and videos up to 60 seconds. Configure Firebase, Cloudinary, and `API_BASE_URL` using the media API setup guide to enable uploads and playback. Messaging remains preview data.
 
 ## Run an app
 
