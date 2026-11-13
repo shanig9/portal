@@ -2,10 +2,73 @@ import 'package:flutter/material.dart';
 
 import '../state/employee_controller.dart';
 import '../widgets/employee_ui.dart';
+import '../services/records_service.dart';
 
-class JobDetailsScreen extends StatelessWidget {
+class JobDetailsScreen extends StatefulWidget {
   const JobDetailsScreen({super.key, required this.state});
   final EmployeeController state;
+  @override
+  State<JobDetailsScreen> createState() => _JobDetailsScreenState();
+}
+
+class _JobDetailsScreenState extends State<JobDetailsScreen> {
+  EmployeeController get state => widget.state;
+  final _records = RecordsService();
+  bool _submitting = false;
+  Future<void> _apply(String title, String company, String location) async {
+    setState(() => _submitting = true);
+    try {
+      final documents = await _records.list('documents');
+      if (!mounted) return;
+      if (documents.isEmpty) {
+        EmployeeUi(
+          context,
+          state,
+        ).notice('Upload a PDF resume before applying.');
+        state.open('Resume');
+        return;
+      }
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Submit application?'),
+          content: Text(
+            'Apply for $title using ${documents.first['filename']}?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      await _records.apply(
+        title: title,
+        company: company,
+        location: location,
+        documentId: documents.first['id'] as String,
+      );
+      if (!mounted) return;
+      state.update(() => state.applied.add(title));
+      EmployeeUi(context, state).notice('Application submitted and saved.');
+    } catch (error) {
+      if (mounted) {
+        EmployeeUi(
+          context,
+          state,
+        ).notice(error.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ui = EmployeeUi(context, state);
@@ -52,13 +115,18 @@ class JobDetailsScreen extends StatelessWidget {
         ].map((s) => Chip(label: Text(s))).toList(),
       ),
       const SizedBox(height: 20),
-      ui.button(
-        state.applied.contains(j.$1) ? 'Application submitted' : 'Apply Now',
-        () {
-          state.update(() => state.applied.add(j.$1));
-          ui.notice('Application added to the preview');
-        },
-        Icons.send,
+      FilledButton.icon(
+        label: Text(
+          _submitting
+              ? 'Submitting...'
+              : state.applied.contains(j.$1)
+              ? 'Application submitted'
+              : 'Apply Now',
+        ),
+        onPressed: _submitting || state.applied.contains(j.$1)
+            ? null
+            : () => _apply(j.$1, j.$2, j.$3),
+        icon: const Icon(Icons.send),
       ),
       TextButton(
         onPressed: () => state.open('My Applications'),

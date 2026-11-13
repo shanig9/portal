@@ -28,6 +28,8 @@ Use `flutter run -d chrome` for a browser preview.
 
 ## Checks
 
+Document uploads and job application records can be persisted in Supabase through the Firebase-authenticated API. See [Supabase setup](supabase/README.md) for the schema, private bucket, and server-key configuration.
+
 Run `flutter analyze` and `flutter test` from each Flutter app directory.
 
 Design reference images are included in each app's screen-reference folder. Generated builds, dependency folders, local SDK paths, and credentials are excluded from version control.

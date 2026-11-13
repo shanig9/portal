@@ -1,73 +1,66 @@
-import '../widgets/employee_icon.dart';
-
 import 'package:flutter/material.dart';
 
+import '../services/records_service.dart';
 import '../state/employee_controller.dart';
 import '../widgets/employee_ui.dart';
 
-class ApplicationsScreen extends StatelessWidget {
+class ApplicationsScreen extends StatefulWidget {
   const ApplicationsScreen({super.key, required this.state});
   final EmployeeController state;
   @override
+  State<ApplicationsScreen> createState() => _ApplicationsScreenState();
+}
+
+class _ApplicationsScreenState extends State<ApplicationsScreen> {
+  final _service = RecordsService();
+  late Future<List<Map<String, dynamic>>> _applications = _service.list(
+    'applications',
+  );
+  static const labels = {
+    'submitted': 'Submitted',
+    'under_review': 'Under Review',
+    'shortlisted': 'Shortlisted',
+    'interview': 'Interview Scheduled',
+    'rejected': 'Not Selected',
+    'closed': 'Closed',
+  };
+  @override
   Widget build(BuildContext context) {
-    final ui = EmployeeUi(context, state);
-    final entries = {
-      ...state.applied,
-      'Flutter Developer',
-      'UI/UX Designer',
-      'Digital Marketing Executive',
-      'Backend Developer',
-      'QA Engineer',
-    }.toList();
-    return ui.list([
-      ui.heading('Track your next opportunity'),
-      ui.caption('All your applications, together.'),
-      const SizedBox(height: 16),
-      Wrap(
-        spacing: 8,
-        children: ['All', 'In Progress', 'Shortlisted', 'Others']
-            .map(
-              (e) => ChoiceChip(
-                label: Text(e),
-                selected: state.applicationFilter == e,
-                onSelected: (_) =>
-                    state.update(() => state.applicationFilter = e),
-              ),
-            )
-            .toList(),
-      ),
-      const SizedBox(height: 16),
-      ...entries
-          .asMap()
-          .entries
-          .where(
-            (e) =>
-                state.applicationFilter == 'All' ||
-                state.applicationFilter == 'Shortlisted' && e.key == 0 ||
-                state.applicationFilter == 'In Progress' && e.key == 1 ||
-                state.applicationFilter == 'Others' && e.key > 1,
-          )
-          .map(
-            (e) => ui.panel(
+    final ui = EmployeeUi(context, widget.state);
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _applications,
+      builder: (context, snapshot) => ui.list([
+        ui.heading('Track your next opportunity'),
+        Row(
+          children: [
+            const Expanded(child: Text('Your saved application records')),
+            IconButton(
+              tooltip: 'Refresh applications',
+              onPressed: () =>
+                  setState(() => _applications = _service.list('applications')),
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
+        ),
+        if (snapshot.connectionState != ConnectionState.done)
+          const Center(child: CircularProgressIndicator())
+        else if (snapshot.hasError)
+          Text(snapshot.error.toString().replaceFirst('Exception: ', ''))
+        else if (snapshot.data!.isEmpty)
+          const Text('No applications yet. Apply for a job to see it here.')
+        else
+          ...snapshot.data!.map(
+            (item) => ui.panel(
               ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: ui.avatar('T'),
-                title: Text(
-                  e.value,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
+                title: Text(item['job_title'] as String),
                 subtitle: Text(
-                  'Career Connect · Pune\n${state.applied.contains(e.value) ? 'Applied just now' : ['Shortlisted', 'Under Review', 'Interview Scheduled', 'Not Selected', 'Application Closed'][e.key % 5]}',
+                  '${item['company']} - ${item['location']}\n${labels[item['status']] ?? item['status']}',
                 ),
                 isThreeLine: true,
-                trailing: const EmployeeIcon(Icons.chevron_right),
-                onTap: () {
-                  state.selectedJob = e.value;
-                  state.open('Job Details');
-                },
               ),
             ),
           ),
-    ]);
+      ]),
+    );
   }
 }

@@ -44,10 +44,11 @@ function createStore(filename) {
   };
 }
 
-function createApp({ cloudinary, verifyToken, store, origins = [] }) {
+function createApp({ cloudinary, verifyToken, store, origins = [], recordsRepository }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(cors({ origin: origins }));
+  app.use('/api', require('./records').recordsRouter({ verifyToken, repository: recordsRepository }));
   app.get('/health', (_, res) => res.json({ app: 'Career Connect', status: 'ok' }));
   app.get('/api/reels', async (req, res) => {
     const limit = Math.min(30, Math.max(1, Number(req.query.limit) || 10));
