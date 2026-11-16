@@ -38,11 +38,13 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
       _checking = false;
     });
     if (_pending) {
-      EmployeeUi(context, state).notice(
-        'Confirmation is still pending. Please check again shortly.',
-      );
+      EmployeeUi(
+        context,
+        state,
+      ).notice('Confirmation is still pending. Please check again shortly.');
     }
   }
+
   Future<void> _apply(
     String title,
     String company,
@@ -99,7 +101,9 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
       EmployeeUi(context, state).notice('Application submitted and saved.');
     } on ApplicationConfirmationPending {
       if (mounted) {
-        state.update(() => state.pendingApplications.add(jobId.isEmpty ? title : jobId));
+        state.update(
+          () => state.pendingApplications.add(jobId.isEmpty ? title : jobId),
+        );
       }
     } catch (error) {
       if (mounted) {
@@ -175,20 +179,25 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
               ? 'Awaiting confirmation'
               : 'Apply Now',
         ),
-        onPressed: _submitting || _pending || state.applied.contains(applicationKey)
+        onPressed:
+            _submitting || _pending || state.applied.contains(applicationKey)
             ? null
             : () => _apply(j.$1, j.$2, j.$3, j.$6),
         icon: const Icon(Icons.send),
       ),
       if (_submitting && _slow)
-        const Text('We are waiting for a response. Please keep this screen open.'),
+        const Text(
+          'We are waiting for a response. Please keep this screen open.',
+        ),
       if (_pending && !state.applied.contains(applicationKey)) ...[
         const Text(
           'Your submission has not been confirmed yet. Check its status before applying again.',
         ),
         TextButton(
           onPressed: _checking ? null : () => _checkStatus(applicationKey),
-          child: Text(_checking ? 'Checking status...' : 'Check submission status'),
+          child: Text(
+            _checking ? 'Checking status...' : 'Check submission status',
+          ),
         ),
       ],
       TextButton(

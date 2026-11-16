@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:video_player/video_player.dart';
@@ -27,12 +29,25 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   bool _loading = false, _uploading = false, _foreground = true;
   String? _error, _cursor;
   int _active = 0;
+  Timer? _syncTimer;
+  Future<void> _syncPending() async {
+    try {
+      await _service.syncPending();
+    } catch (_) {
+      // Keep saved videos queued until a later foreground retry.
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _pages = widget.pageController ?? PageController();
     WidgetsBinding.instance.addObserver(this);
     _load();
+    _syncPending();
+    _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_foreground) _syncPending();
+    });
   }
 
   @override
@@ -44,6 +59,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     if (widget.pageController == null) _pages.dispose();
     super.dispose();
@@ -115,6 +131,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       if (caption == null) return;
       final bytes = await file.readAsBytes();
       final reel = await _service.saveOnDevice(bytes, file.name, caption);
+      _syncPending();
       if (!mounted) return;
       setState(() {
         _reels.insert(0, reel);
@@ -123,7 +140,9 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       });
       if (_pages.hasClients) _pages.jumpToPage(0);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reel saved on this device.')),
+        const SnackBar(
+          content: Text('Saved on your phone. Will post when connected.'),
+        ),
       );
     } catch (error) {
       if (mounted) {
@@ -248,7 +267,8 @@ class _CaptionDialogState extends State<_CaptionDialog> {
       maxLines: 3,
       decoration: const InputDecoration(
         labelText: 'Caption',
-        helperText: 'Saved on this device. Visible only to you.',
+        helperText:
+            'Saved on your phone, then posted when connected. Max 60 seconds.',
       ),
     ),
     actions: [

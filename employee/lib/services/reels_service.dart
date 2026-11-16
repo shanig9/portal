@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'reel_storage.dart';
@@ -30,8 +29,44 @@ class ReelsPage {
 }
 
 class ReelsService {
+  bool _syncing = false;
+  Future<void> syncPending() async {
+    if (_syncing ||
+        Firebase.apps.isEmpty ||
+        FirebaseAuth.instance.currentUser == null) {
+      return;
+    }
+    _syncing = true;
+    try {
+      for (final item in await readLocalReels()) {
+        if (item['pending'] != true ||
+            item['ownerId'] != FirebaseAuth.instance.currentUser?.uid) {
+          continue;
+        }
+        final remote = await upload(
+          await readReelBytes(item['url'] as String),
+          item['filename'] as String,
+          item['caption'] as String,
+        );
+        await markReelSynced(item, remote.id);
+      }
+    } finally {
+      _syncing = false;
+    }
+  }
+
   Future<List<Reel>> deviceReels() async {
-    final local = (await readLocalReels()).map(Reel.fromJson).toList();
+    final local = (await readLocalReels())
+        .where(
+          (item) =>
+              Firebase.apps.isNotEmpty &&
+              item['ownerId'] == FirebaseAuth.instance.currentUser?.uid,
+        )
+        .map(
+          (item) =>
+              Reel.fromJson({...item, 'id': item['remoteId'] ?? item['id']}),
+        )
+        .toList();
     final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
     final assets =
         manifest
@@ -60,6 +95,9 @@ class ReelsService {
     String name,
     String caption,
   ) async {
+    if (Firebase.apps.isEmpty || FirebaseAuth.instance.currentUser == null) {
+      throw Exception('Sign in before adding a reel.');
+    }
     final extension = name.split('.').last.toLowerCase();
     if (!['mp4', 'mov', 'webm'].contains(extension)) {
       throw Exception('Choose an MP4, MOV or WebM video.');
@@ -68,6 +106,8 @@ class ReelsService {
       throw Exception('Choose a video of up to 50 MB.');
     }
     final data = <String, dynamic>{
+      'pending': true,
+      'ownerId': FirebaseAuth.instance.currentUser!.uid,
       'id': 'local-${DateTime.now().microsecondsSinceEpoch}',
       'type': 'video',
       'caption': caption,

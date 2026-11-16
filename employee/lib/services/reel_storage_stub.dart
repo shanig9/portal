@@ -13,3 +13,7 @@ Future<String> saveLocalReel(
 
 VideoPlayerController localReelPlayer(String path) =>
     VideoPlayerController.networkUrl(Uri.parse(path));
+
+Future<Uint8List> readReelBytes(String url) async =>
+    throw UnsupportedError('Mobile only');
+Future<void> markReelSynced(Map<String, dynamic> item, String remoteId) async {}

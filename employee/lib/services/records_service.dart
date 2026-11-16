@@ -126,17 +126,17 @@ class RecordsService {
     String jobId,
     Map<String, String> headers,
   ) async {
-      // A lost response does not mean the database insert failed.
-      try {
-        final response = await http
-            .get(_uri('applications'), headers: headers)
-            .timeout(const Duration(seconds: 30));
-        final items = _decode(response)['items'] as List;
-        if (items.any((item) => item['job_key'] == jobId)) return;
-      } catch (_) {
-        // Leave the outcome unknown if the confirmation request also fails.
-      }
-      throw const ApplicationConfirmationPending();
+    // A lost response does not mean the database insert failed.
+    try {
+      final response = await http
+          .get(_uri('applications'), headers: headers)
+          .timeout(const Duration(seconds: 30));
+      final items = _decode(response)['items'] as List;
+      if (items.any((item) => item['job_key'] == jobId)) return;
+    } catch (_) {
+      // Leave the outcome unknown if the confirmation request also fails.
+    }
+    throw const ApplicationConfirmationPending();
   }
 
   Map<String, dynamic> _decode(http.Response response) {
