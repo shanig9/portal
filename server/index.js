@@ -11,16 +11,27 @@ app.use((req, res, next) => {
   next();
 });
 try {
+startupStage = 'loading @vercel/functions';
 const { waitUntil } = require('@vercel/functions');
+startupStage = 'loading cloudinary';
 const { v2: cloudinary } = require('cloudinary');
+startupStage = 'loading firebase-admin/app';
 const { initializeApp, getApps } = require('firebase-admin/app');
+startupStage = 'loading firebase-config';
 const { firebaseOptions } = require('./firebase-config');
+startupStage = 'loading firebase-admin/auth';
 const { getAuth } = require('firebase-admin/auth');
+startupStage = 'loading firebase-admin/firestore';
 const { getFirestore } = require('firebase-admin/firestore');
+startupStage = 'loading chat';
 const { createChatPublisher, createJobResolver } = require('./chat');
+startupStage = 'loading reels';
 const { createApp } = require('./reels');
+startupStage = 'loading reels-store';
 const { createReelsStore } = require('./reels-store');
+startupStage = 'loading @supabase/supabase-js';
 const { createClient } = require('@supabase/supabase-js');
+startupStage = 'loading records';
 const { createRecordsRepository } = require('./records');
 
 startupStage = 'checking environment variables';
@@ -61,6 +72,10 @@ createApp({
   const diagnostic = {
     app: 'Career Connect', status: 'unavailable', code: 'STARTUP_FAILED',
     stage: startupStage,
+    runtime: process.version,
+    errorCode: ['MODULE_NOT_FOUND', 'ERR_MODULE_NOT_FOUND', 'ERR_REQUIRE_ESM',
+      'ERR_PACKAGE_PATH_NOT_EXPORTED', 'ERR_DLOPEN_FAILED'].includes(error.code)
+      ? error.code : 'INITIALIZATION_ERROR',
     missingVariables: required.filter((key) => !process.env[key]?.trim()),
   };
   console.error('Career Connect startup failed:', JSON.stringify(diagnostic));
