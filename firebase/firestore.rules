@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function member(room) {
+      return request.auth != null && request.auth.uid in room.participantIds;
+    }
+    match /career_jobs/{jobId} {
+      function validJob() {
+        let job = request.resource.data;
+        return job.keys().hasAll(['ownerUid', 'title', 'company', 'location', 'salary', 'employment', 'active', 'draft', 'live', 'expiry', 'details', 'updatedAt', 'archived'])
+          && job.keys().hasOnly(['ownerUid', 'title', 'company', 'location', 'salary', 'employment', 'active', 'draft', 'live', 'expiry', 'details', 'updatedAt', 'archived'])
+          && job.ownerUid == request.auth.uid
+          && job.title is string && job.title.size() > 0 && job.title.size() <= 200
+          && job.company is string && job.company.size() > 0 && job.company.size() <= 200
+          && job.location is string && job.location.size() > 0 && job.location.size() <= 200
+          && job.salary is string && job.salary.size() <= 200
+          && job.employment is string && job.employment.size() <= 100
+          && job.active is bool && job.draft is bool
+          && job.archived is bool && (job.archived == false || job.active == false)
+          && job.live is int && job.expiry is int && job.expiry >= job.live
+          && job.details is map
+          && job.details.keys().hasAll(['experience', 'openings', 'mode', 'qualification', 'skills', 'description', 'about'])
+          && job.details.experience is string && job.details.openings is string
+          && job.details.mode is string && job.details.qualification is string
+          && job.details.skills is list && job.details.skills.size() <= 50
+          && job.details.description is string && job.details.description.size() <= 12000
+          && job.details.about is string && job.details.about.size() <= 12000
+          && job.updatedAt == request.time;
+      }
+      allow read: if (resource.data.active == true && resource.data.draft == false)
+        || (request.auth != null && resource.data.ownerUid == request.auth.uid);
+      allow create: if request.auth != null && validJob();
+      allow update: if request.auth != null && resource.data.ownerUid == request.auth.uid && validJob();
+      allow delete: if false;
+    }
+    match /career_chats/{chatId} {
+      // Eligibility is provisioned by the authenticated application API only.
+      allow read: if member(resource.data);
+      allow write: if false;
+      match /messages/{messageId} {
+        function participant() {
+          return member(get(/databases/$(database)/documents/career_chats/$(chatId)).data);
+        }
+        allow read: if participant();
+        allow create: if participant()
+          && request.resource.data.keys().hasAll(['senderId', 'text', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt'])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 4000
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+  }
+}

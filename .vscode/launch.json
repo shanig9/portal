@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Career Connect employee (USB phone)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/employee",
+      "program": "${workspaceFolder}/employee/lib/main.dart",
+      "flutterMode": "debug",
+      "toolArgs": ["--dart-define-from-file=config/local-usb.json"],
+      "preLaunchTask": "Career Connect: forward backend to USB phone"
+    },
+    {
+      "name": "Career Connect HR (USB phone)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/hr",
+      "program": "${workspaceFolder}/hr/lib/main.dart",
+      "flutterMode": "debug",
+      "toolArgs": ["--dart-define-from-file=config/local-usb.json"],
+      "preLaunchTask": "Career Connect: forward backend to USB phone"
+    }
+  ]
+}

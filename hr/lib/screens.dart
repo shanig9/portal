@@ -1,6 +1,13 @@
 import 'hr_icon.dart';
 
-import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:career_connect_chat/career_jobs.dart';
+
+import 'package:career_connect_chat/career_connect_chat.dart';
+
+import 'package:material_ui/material_ui.dart';
 
 import 'main.dart';
 import 'models.dart';
@@ -100,6 +107,57 @@ class PortalScreen extends StatefulWidget {
 }
 
 class _PortalScreenState extends State<PortalScreen> {
+  StreamSubscription<List<Map<String, dynamic>>>? _jobSubscription;
+  String? _jobsError;
+  @override
+  void initState() {
+    super.initState();
+    if (Firebase.apps.isNotEmpty) {
+      jobs.clear();
+      applicants.clear();
+      _jobSubscription = CareerJobs()
+          .watch(owned: true)
+          .listen(
+            (items) {
+              if (mounted) {
+                setState(() {
+                  jobs
+                    ..clear()
+                    ..addAll(items.map(Job.fromData));
+                  _jobsError = null;
+                });
+              }
+            },
+            onError: (Object error) {
+              if (mounted) {
+                setState(
+                  () => _jobsError =
+                      'Unable to load your jobs. Check your connection.',
+                );
+              }
+            },
+          );
+    }
+  }
+
+  @override
+  void dispose() {
+    _jobSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _jobError() {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to save the job. Check your connection and try again.',
+          ),
+        ),
+      );
+    }
+  }
+
   int tab = 0;
   final jobs = [
     Job(),
@@ -129,23 +187,54 @@ class _PortalScreenState extends State<PortalScreen> {
     final job = await Navigator.of(context)
         .push<Job>(MaterialPageRoute(builder: (_) => const JobFormScreen()));
     if (job != null && mounted) {
+      if (Firebase.apps.isNotEmpty) {
+        try {
+          job.id = await CareerJobs().save(
+            job.toData(widget.company.name),
+            id: job.id,
+          );
+        } catch (_) {
+          _jobError();
+          return;
+        }
+      }
+      if (!mounted) return;
       setState(() {
-        jobs.insert(0, job);
+        if (!jobs.any(
+          (existing) => existing.id != null && existing.id == job.id,
+        )) {
+          jobs.insert(0, job);
+        }
         tab = 0;
       });
     }
   }
 
   Future<void> openJob(Job job) async {
+    bool deleted = false;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => JobDetailsScreen(
           job: job,
           applicants: applicants,
-          onDelete: () => jobs.remove(job),
+          onDelete: () {
+            deleted = true;
+            jobs.remove(job);
+          },
         ),
       ),
     );
+    if (Firebase.apps.isNotEmpty && job.id != null) {
+      try {
+        if (deleted) {
+          await CareerJobs().delete(job.id!);
+        } else {
+          await CareerJobs().save(job.toData(widget.company.name), id: job.id);
+        }
+      } catch (_) {
+        _jobError();
+      }
+    }
     if (mounted) setState(() {});
   }
 
@@ -156,6 +245,18 @@ class _PortalScreenState extends State<PortalScreen> {
       toolbarHeight: 80,
       automaticallyImplyLeading: false,
       actions: [
+        IconButton(
+          tooltip: 'Messages',
+          icon: const HrIcon(Icons.chat_bubble_outline),
+          onPressed: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => Scaffold(
+                appBar: AppBar(title: const Text('Messages')),
+                body: const CareerChatInbox(),
+              ),
+            ),
+          ),
+        ),
         IconButton(
           tooltip: 'Notifications',
           onPressed: () => go(
@@ -181,6 +282,7 @@ class _PortalScreenState extends State<PortalScreen> {
           )
         : PageBody(
             children: [
+              if (_jobsError != null) Text(_jobsError!),
               Row(
                 children: [
                   Expanded(child: heading('Job Applications')),

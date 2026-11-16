@@ -23,6 +23,55 @@ class Company {
 }
 
 class Job {
+  String? id;
+  Map<String, dynamic> toData(String company) => {
+    'title': title,
+    'company': company,
+    'location': location,
+    'salary': salary,
+    'employment': employment,
+    'active': active,
+    'draft': draft,
+    'live': live.millisecondsSinceEpoch,
+    'expiry': DateTime(
+      expiry.year,
+      expiry.month,
+      expiry.day,
+      23,
+      59,
+      59,
+    ).millisecondsSinceEpoch,
+    'details': {
+      'experience': experience,
+      'openings': openings,
+      'mode': mode,
+      'qualification': qualification,
+      'skills': skills,
+      'description': description,
+      'about': about,
+    },
+  };
+  factory Job.fromData(Map<String, dynamic> data) {
+    final details = data['details'] as Map<String, dynamic>;
+    return Job(
+        title: data['title'] as String,
+        skills: (details['skills'] as List).cast<String>(),
+      )
+      ..id = data['id'] as String
+      ..employment = data['employment'] as String
+      ..location = data['location'] as String
+      ..salary = data['salary'] as String
+      ..active = data['active'] as bool
+      ..draft = data['draft'] as bool
+      ..live = DateTime.fromMillisecondsSinceEpoch(data['live'] as int)
+      ..expiry = DateTime.fromMillisecondsSinceEpoch(data['expiry'] as int)
+      ..experience = details['experience'] as String
+      ..openings = details['openings'] as String
+      ..mode = details['mode'] as String
+      ..qualification = details['qualification'] as String
+      ..description = details['description'] as String
+      ..about = details['about'] as String;
+  }
   Job({this.title = 'Flutter Developer', List<String>? skills})
     : skills = skills ?? ['Flutter', 'Dart', 'API Integration'];
   String title;
@@ -33,8 +82,8 @@ class Job {
   String openings = '3';
   String mode = 'On-site';
   String qualification = 'Bachelor’s Degree';
-  DateTime live = DateTime(2026, 11, 10);
-  DateTime expiry = DateTime(2026, 11, 25);
+  DateTime live = DateTime.now();
+  DateTime expiry = DateTime.now().add(const Duration(days: 30));
   List<String> skills;
   String description =
       '• Develop and maintain Flutter mobile applications.\n• Integrate REST APIs and third-party services.\n• Write clean, scalable, and maintainable code.\n• Collaborate with design and backend teams.';
@@ -44,6 +93,7 @@ class Job {
   bool draft = false;
 
   Job copy() => Job(title: title, skills: List.of(skills))
+    ..id = id
     ..employment = employment
     ..experience = experience
     ..salary = salary

@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('node:path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { createClient } = require('@supabase/supabase-js');
 (async () => {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
@@ -11,7 +12,16 @@ const { createClient } = require('@supabase/supabase-js');
     if (result.error) throw new Error(`Cannot query ${table}: ${result.error.message}`);
     console.log(`${table}: connected`);
   }
-  const { data, error } = await client.storage.getBucket('career-documents');
+  let { data, error } = await client.storage.getBucket('career-documents');
+  if (error?.message === 'Bucket not found' && process.argv.includes('--create-missing-bucket')) {
+    const created = await client.storage.createBucket('career-documents', {
+      public: false, fileSizeLimit: 10 * 1024 * 1024,
+      allowedMimeTypes: ['application/pdf'],
+    });
+    if (created.error) throw new Error(created.error.message);
+    console.log('career-documents: created private PDF bucket (10 MB limit)');
+    ({ data, error } = await client.storage.getBucket('career-documents'));
+  }
   if (error) throw new Error(error.message);
   if (data.public) throw new Error('career-documents bucket must be private.');
   console.log('career-documents: private bucket connected');

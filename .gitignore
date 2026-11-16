@@ -29,3 +29,7 @@ firebase/*firebase-adminsdk*.json
 Thumbs.db
 *.log
 server/data/
+
+# Deployment-specific Flutter API address; keep the example template tracked.
+employee/config/production.json
+hr/config/production.json

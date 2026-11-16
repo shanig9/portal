@@ -1,6 +1,6 @@
 import 'widgets/employee_icon.dart';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'state/employee_controller.dart';
 import 'widgets/employee_ui.dart';
@@ -11,7 +11,6 @@ import 'screens/saved_jobs_screen.dart';
 import 'screens/job_details_screen.dart';
 import 'screens/reels_screen.dart';
 import 'screens/messages_screen.dart';
-import 'screens/conversation_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/applications_screen.dart';
 import 'screens/candidate_details_screen.dart';
@@ -170,10 +169,6 @@ class _EmployeeShellState extends State<EmployeeShell> {
     'Job Details' => JobDetailsScreen(key: ValueKey(state.page), state: state),
     'Reels' => ReelsScreen(key: ValueKey(state.page), state: state),
     'Messages' => MessagesScreen(key: ValueKey(state.page), state: state),
-    'Conversation' => ConversationScreen(
-      key: ValueKey(state.page),
-      state: state,
-    ),
     'Profile' => ProfileScreen(key: ValueKey(state.page), state: state),
     'My Applications' => ApplicationsScreen(
       key: ValueKey(state.page),

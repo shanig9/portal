@@ -1,0 +1,13 @@
+name: career_connect_chat
+description: Shared application chat for Career Connect employee and HR apps.
+publish_to: none
+version: 1.0.0
+environment:
+  sdk: ^3.13.3
+dependencies:
+  flutter:
+    sdk: flutter
+  cloud_firestore: ^7.1.0
+  firebase_auth: ^7.0.1
+  firebase_core: ^5.1.0
+  material_ui: ^1.11.0

@@ -54,4 +54,8 @@ test('authenticated upload publishes media; rejected videos are deleted; feed pa
   const next = await (await fetch(`${url}?limit=1&cursor=${first.nextCursor}`)).json();
   assert.equal(next.items.length, 1);
   assert.equal(next.nextCursor, null);
+  duration = 30;
+  store.add = async () => { throw new Error('Database unavailable'); };
+  assert.equal((await upload()).status, 500);
+  assert.equal(deleted, 2, 'media is removed when metadata cannot be saved');
 });

@@ -1,5 +1,5 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:video_player/video_player.dart';
 
 import '../services/reels_service.dart';
@@ -22,12 +22,14 @@ class ReelsScreen extends StatefulWidget {
 class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   final _service = ReelsService();
   final _reels = <Reel>[];
+  late final PageController _pages;
   bool _loading = false, _uploading = false, _foreground = true;
   String? _error, _cursor;
   int _active = 0;
   @override
   void initState() {
     super.initState();
+    _pages = widget.pageController ?? PageController();
     WidgetsBinding.instance.addObserver(this);
     _load();
   }
@@ -42,6 +44,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (widget.pageController == null) _pages.dispose();
     super.dispose();
   }
 
@@ -64,11 +67,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         );
         _cursor = page.nextCursor;
       });
+      if (!more && _pages.hasClients) _pages.jumpToPage(0);
     } catch (error) {
       if (mounted) {
-        setState(
-          () => _error = error.toString().replaceFirst('Exception: ', ''),
-        );
+        setState(() => _error = ReelsService.errorMessage(error));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -96,22 +98,25 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         builder: (_) => const _CaptionDialog(),
       );
       if (caption == null) return;
-      final reel = await _service.upload(await file.readAsBytes(), file.name, caption);
+      final reel = await _service.upload(
+        await file.readAsBytes(),
+        file.name,
+        caption,
+      );
       if (!mounted) return;
       setState(() {
         _reels.insert(0, reel);
         _active = 0;
         _error = null;
       });
+      if (_pages.hasClients) _pages.jumpToPage(0);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Your reel is published.')));
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
-          ),
+          SnackBar(content: Text(ReelsService.errorMessage(error))),
         );
       }
     } finally {
@@ -130,18 +135,18 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
+          child: Wrap(
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Expanded(
-                child: Text('Career Connect Reels\nVideos up to 60 seconds'),
-              ),
+              const Text('Career Connect Reels\nVideos up to 60 seconds'),
               IconButton(
                 tooltip: 'Refresh reels',
-                onPressed: _loading ? null : () => _load(),
+                onPressed: _loading || _uploading ? null : () => _load(),
                 icon: const Icon(Icons.refresh),
               ),
               FilledButton.icon(
-                onPressed: _uploading ? null : _upload,
+                onPressed: _uploading || _loading ? null : _upload,
                 icon: const Icon(Icons.add),
                 label: Text(_uploading ? 'Uploading...' : 'Upload'),
               ),
@@ -168,12 +173,14 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
                   child: Text(
                     _loading
                         ? 'Loading reels...'
+                        : _error != null
+                        ? 'Reels could not be loaded.'
                         : 'No reels yet. Share your first image or video.',
                   ),
                 )
               : PageView.builder(
                   key: ValueKey(_reels.first.id),
-                  controller: widget.pageController,
+                  controller: _pages,
                   scrollDirection: Axis.vertical,
                   itemCount: _reels.length,
                   onPageChanged: (index) {
@@ -254,6 +261,12 @@ class _ReelCard extends StatefulWidget {
 class _ReelCardState extends State<_ReelCard> {
   VideoPlayerController? _video;
   bool _failed = false, _paused = false, _muted = true;
+  void _onVideoChanged() {
+    if (mounted && _video?.value.hasError == true && !_failed) {
+      setState(() => _failed = true);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -278,12 +291,14 @@ class _ReelCardState extends State<_ReelCard> {
       return;
     }
     if (_video != null) return;
+    _failed = false;
     final controller = VideoPlayerController.networkUrl(
       Uri.parse(widget.reel.url),
     );
     _video = controller;
+    controller.addListener(_onVideoChanged);
     try {
-      await controller.initialize();
+      await controller.initialize().timeout(const Duration(seconds: 30));
       if (!mounted || _video != controller || !widget.active) return;
       await controller.setLooping(true);
       await controller.setVolume(_muted ? 0 : 1);

@@ -70,3 +70,54 @@ test('failed metadata insert cleans up uploaded document', async () => {
   }), /database unavailable/);
   assert.equal(removed, true);
 });
+
+test('retrying an application returns its saved status without a second insert or job lookup', async () => {
+  const calls = [];
+  const saved = { id: 'application-1', job_key: 'job-1', status: 'shortlisted' };
+  const repository = createRecordsRepository({
+    from: (table) => {
+      assert.equal(table, 'career_applications');
+      return fakeQuery({ data: saved }, calls);
+    },
+  }, null, () => { throw new Error('A saved application must not need revalidation'); });
+  assert.deepEqual(await repository.apply('employee-1', { jobKey: 'job-1' }), saved);
+  assert.ok(calls.some(([method, field, value]) => method === 'eq' && field === 'applicant_uid' && value === 'employee-1'));
+  assert.ok(!calls.some(([method]) => method === 'insert'));
+});
+
+test('concurrent duplicate submissions return the existing application', async () => {
+  let applicationQueries = 0;
+  const saved = { id: 'application-1', job_key: 'job-1', status: 'submitted' };
+  const repository = createRecordsRepository({ from: (table) => {
+    if (table === 'career_documents') return fakeQuery({ data: { id: 'resume-1' } }, []);
+    applicationQueries++;
+    if (applicationQueries === 1) return fakeQuery({ data: null }, []);
+    if (applicationQueries === 2) return fakeQuery({ error: { code: '23505' } }, []);
+    return fakeQuery({ data: saved }, []);
+  } });
+  assert.deepEqual(await repository.apply('employee-1', { jobKey: 'job-1', documentId: 'resume-1' }), saved);
+});
+
+test('job verification and resume ownership checks run together before saving', { timeout: 2000 }, async () => {
+  let releaseJob;
+  let documentStarted;
+  const jobResult = new Promise((resolve) => { releaseJob = resolve; });
+  const documentRead = new Promise((resolve) => { documentStarted = resolve; });
+  let applicationQueries = 0;
+  let inserted = false;
+  const repository = createRecordsRepository({ from: (table) => {
+    if (table === 'career_documents') {
+      documentStarted();
+      return fakeQuery({ data: { id: 'resume-1' } }, []);
+    }
+    applicationQueries++;
+    if (applicationQueries === 1) return fakeQuery({ data: null }, []);
+    inserted = true;
+    return fakeQuery({ data: { id: 'saved-application', job_key: 'job-1' } }, []);
+  } }, null, () => jobResult);
+  const submitting = repository.apply('employee-1', { jobKey: 'job-1', documentId: 'resume-1' });
+  await documentRead;
+  assert.equal(inserted, false, 'cannot insert until the job is verified');
+  releaseJob({ jobKey: 'job-1', jobTitle: 'Developer', company: 'Career Connect', location: 'Pune' });
+  assert.equal((await submitting).id, 'saved-application');
+});

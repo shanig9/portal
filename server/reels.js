@@ -5,6 +5,7 @@ const { rateLimit } = require('express-rate-limit');
 const { randomUUID } = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { authenticate } = require('./authentication');
 
 const MAX_BYTES = 50 * 1024 * 1024;
 const formats = { image: ['jpg', 'jpeg', 'png', 'webp'], video: ['mp4', 'mov', 'webm'] };
@@ -44,14 +45,21 @@ function createStore(filename) {
   };
 }
 
-function createApp({ cloudinary, verifyToken, store, origins = [], recordsRepository }) {
-  const app = express();
+function createApp({ cloudinary, verifyToken, store, origins = [], recordsRepository, app = express() }) {
   app.disable('x-powered-by');
   app.use(cors({ origin: origins }));
+  app.get('/', (_, res) => res.json({
+    app: 'Career Connect',
+    status: 'ok',
+    message: 'Career Connect API is running.',
+    health: '/health',
+    reels: '/api/reels',
+  }));
   app.use('/api', require('./records').recordsRouter({ verifyToken, repository: recordsRepository }));
   app.get('/health', (_, res) => res.json({ app: 'Career Connect', status: 'ok' }));
   app.get('/api/reels', async (req, res) => {
-    const limit = Math.min(30, Math.max(1, Number(req.query.limit) || 10));
+    const limit = Math.min(30, Math.max(1, Math.floor(Number(req.query.limit) || 10)));
+    if (store.list) return res.json(await store.list({ limit, cursor: req.query.cursor }));
     const reels = await store.read();
     const cursor = req.query.cursor;
     const start = cursor ? reels.findIndex((reel) => reel.id === cursor) + 1 : 0;
@@ -71,8 +79,8 @@ function createApp({ cloudinary, verifyToken, store, origins = [], recordsReposi
   app.post('/api/reels', rateLimit({ windowMs: 15 * 60 * 1000, limit: 10 }), async (req, res, next) => {
     const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
     if (!token) return res.status(401).json({ error: 'Sign in to upload a reel.' });
-    try { req.account = await verifyToken(token); }
-    catch { return res.status(401).json({ error: 'Your session expired. Sign in again.' }); }
+    try { req.account = await authenticate(verifyToken, token); }
+    catch (error) { return res.status(error.status).json({ error: error.message }); }
     next();
   }, upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Choose an image or video.' });

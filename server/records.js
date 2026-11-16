@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const { rateLimit } = require('express-rate-limit');
 const { randomUUID } = require('node:crypto');
+const { authenticate } = require('./authentication');
 
 const BUCKET = 'career-documents';
 const DOCUMENT_FIELDS = 'id,filename,mime_type,size_bytes,created_at';
@@ -9,7 +10,7 @@ const APPLICATION_FIELDS = 'id,job_key,job_title,company,location,document_id,st
 function badRequest(message, status = 400) { return Object.assign(new Error(message), { status }); }
 function check(result) { if (result.error) throw result.error; return result.data; }
 
-function createRecordsRepository(client) {
+function createRecordsRepository(client, publishChat, resolveJob, { scheduleBackgroundTask = () => {} } = {}) {
   return {
     async documents(uid) {
       return check(await client.from('career_documents').select(DOCUMENT_FIELDS)
@@ -41,17 +42,47 @@ function createRecordsRepository(client) {
       return check(await client.from('career_applications').select(APPLICATION_FIELDS)
         .eq('applicant_uid', uid).order('created_at', { ascending: false }).limit(100));
     },
+    async chat(uid, id) {
+      if (!publishChat) throw badRequest('Chat is not configured yet.', 503);
+      const application = check(await client.from('career_applications')
+        .select(`${APPLICATION_FIELDS},applicant_uid`).eq('id', id)
+        .eq('applicant_uid', uid).maybeSingle());
+      if (!application) throw badRequest('Application not found.', 404);
+      return publishChat(application);
+    },
     async apply(uid, input) {
-      const document = check(await client.from('career_documents').select('id')
-        .eq('owner_uid', uid).eq('id', input.documentId).maybeSingle());
+      const findExisting = async () => check(await client.from('career_applications')
+        .select(APPLICATION_FIELDS).eq('applicant_uid', uid).eq('job_key', input.jobKey).maybeSingle());
+      const existing = await findExisting();
+      if (existing) return existing;
+      // These independent reads can run together on slower connections.
+      const [job, documentResult] = await Promise.all([
+        resolveJob ? resolveJob(input.jobKey, uid) : Promise.resolve({}),
+        client.from('career_documents').select('id')
+          .eq('owner_uid', uid).eq('id', input.documentId).maybeSingle(),
+      ]);
+      input = { ...input, ...job };
+      const document = check(documentResult);
       if (!document) throw badRequest('Select one of your uploaded documents.');
-      // Current jobs are local previews; store a snapshot until persisted HR jobs supply canonical IDs.
+      // Job details have been verified against the published opening above.
       const result = await client.from('career_applications').insert({
         applicant_uid: uid, job_key: input.jobKey, job_title: input.jobTitle,
         company: input.company, location: input.location, document_id: document.id,
       }).select(APPLICATION_FIELDS).single();
-      if (result.error?.code === '23505') throw badRequest('You already applied for this job.', 409);
-      return check(result);
+      if (result.error?.code === '23505') {
+        const saved = await findExisting();
+        if (saved) return saved;
+        throw badRequest('Unable to confirm the existing application. Refresh My Applications.', 409);
+      }
+      const application = check(result);
+      // The application is committed. Chat must not delay its success response.
+      // The applicant can retry via POST /applications/:id/chat after a restart.
+      if (publishChat) {
+        const task = Promise.resolve().then(() => publishChat({ ...application, applicant_uid: uid }))
+          .catch(() => console.warn('Chat provisioning pending for application:', application.id));
+        scheduleBackgroundTask(task);
+      }
+      return application;
     },
   };
 }
@@ -63,8 +94,8 @@ function recordsRouter({ verifyToken, repository }) {
   router.use(async (req, res, next) => {
     const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
     if (!token) return res.status(401).json({ error: 'Sign in to access your documents and applications.' });
-    try { req.account = await verifyToken(token); }
-    catch { return res.status(401).json({ error: 'Your session expired. Sign in again.' }); }
+    try { req.account = await authenticate(verifyToken, token); }
+    catch (error) { return res.status(error.status).json({ error: error.message }); }
     if (!repository) return res.status(503).json({ error: 'Document and application storage is not configured yet.' });
     next();
   });
@@ -85,6 +116,10 @@ function recordsRouter({ verifyToken, repository }) {
     res.json(await repository.download(req.account.uid, req.params.id));
   });
   router.get('/applications', async (req, res) => res.json({ items: await repository.applications(req.account.uid) }));
+  router.post('/applications/:id/chat', async (req, res) => {
+    if (!isUuid(req.params.id)) throw badRequest('Invalid application ID.');
+    res.json(await repository.chat(req.account.uid, req.params.id));
+  });
   router.post('/applications', express.json({ limit: '8kb' }), async (req, res) => {
     const input = req.body;
     if (!input || !isUuid(input.documentId) ||

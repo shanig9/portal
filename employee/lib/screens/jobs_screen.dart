@@ -1,6 +1,6 @@
 import '../widgets/employee_icon.dart';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../state/employee_controller.dart';
 import '../widgets/employee_ui.dart';
@@ -14,7 +14,8 @@ class JobsScreen extends StatelessWidget {
     final ui = EmployeeUi(context, state);
     final visible = state.jobs.where(
       (j) =>
-          (state.page != 'Saved Jobs' || state.saved.contains(j.$1)) &&
+          (state.page != 'Saved Jobs' ||
+              state.saved.contains(j.$6.isEmpty ? j.$1 : j.$6)) &&
           '${j.$1} ${j.$2} ${j.$3}'.toLowerCase().contains(
             state.query.toLowerCase(),
           ) &&
@@ -23,6 +24,7 @@ class JobsScreen extends StatelessWidget {
               state.filter == j.$3),
     );
     return ui.list([
+      if (state.data['jobsError'] != null) Text(state.data['jobsError']!),
       TextFormField(
         initialValue: state.query,
         onChanged: (v) => state.update(() => state.query = v),
@@ -75,6 +77,7 @@ class JobsScreen extends StatelessWidget {
                     child: InkWell(
                       onTap: () {
                         state.selectedJob = j.$1;
+                        state.selectedJobId = j.$6;
                         state.open('Job Details');
                       },
                       child: Column(
@@ -95,12 +98,13 @@ class JobsScreen extends StatelessWidget {
                   IconButton(
                     tooltip: 'Save job',
                     onPressed: () => state.update(() {
-                      state.saved.contains(j.$1)
-                          ? state.saved.remove(j.$1)
-                          : state.saved.add(j.$1);
+                      final key = j.$6.isEmpty ? j.$1 : j.$6;
+                      state.saved.contains(key)
+                          ? state.saved.remove(key)
+                          : state.saved.add(key);
                     }),
                     icon: EmployeeIcon(
-                      state.saved.contains(j.$1)
+                      state.saved.contains(j.$6.isEmpty ? j.$1 : j.$6)
                           ? Icons.bookmark
                           : Icons.bookmark_border,
                       color: blue,
@@ -132,10 +136,13 @@ class JobsScreen extends StatelessWidget {
                   TextButton(
                     onPressed: () {
                       state.selectedJob = j.$1;
+                      state.selectedJobId = j.$6;
                       state.open('Job Details');
                     },
                     child: Text(
-                      state.applied.contains(j.$1) ? 'Applied' : 'View & Apply',
+                      state.applied.contains(j.$6.isEmpty ? j.$1 : j.$6)
+                          ? 'Applied'
+                          : 'View & Apply',
                     ),
                   ),
                 ],

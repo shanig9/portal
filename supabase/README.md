@@ -1,5 +1,9 @@
 # Career Connect documents and applications
 
+## Reels
+
+Run [schemas/reels.sql](schemas/reels.sql) once in the SQL Editor to create `career_reels`. The API uses the same `SUPABASE_URL` and server-only `SUPABASE_SECRET_KEY` to save reel captions, owners, Cloudinary URLs, and timestamps. Files remain on Cloudinary. Restart the API after setup. New reel uploads no longer write to local JSON; older JSON records require a separate import if any exist.
+
 Target project: `https://jnsipuxlafjbgxbgvnth.supabase.co`.
 
 ## First-time hosted setup

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../state/employee_controller.dart';
 import '../widgets/employee_ui.dart';
@@ -15,7 +15,12 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
   EmployeeController get state => widget.state;
   final _records = RecordsService();
   bool _submitting = false;
-  Future<void> _apply(String title, String company, String location) async {
+  Future<void> _apply(
+    String title,
+    String company,
+    String location,
+    String jobId,
+  ) async {
     setState(() => _submitting = true);
     try {
       final documents = await _records.list('documents');
@@ -49,13 +54,14 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
       );
       if (confirmed != true) return;
       await _records.apply(
+        jobId: jobId,
         title: title,
         company: company,
         location: location,
         documentId: documents.first['id'] as String,
       );
       if (!mounted) return;
-      state.update(() => state.applied.add(title));
+      state.update(() => state.applied.add(jobId.isEmpty ? title : jobId));
       EmployeeUi(context, state).notice('Application submitted and saved.');
     } catch (error) {
       if (mounted) {
@@ -72,10 +78,20 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final ui = EmployeeUi(context, state);
+    if (state.jobs.isEmpty) {
+      return const Center(child: Text('This opening is no longer available.'));
+    }
     final j = state.jobs.firstWhere(
-      (e) => e.$1 == state.selectedJob,
+      (e) => state.selectedJobId.isNotEmpty
+          ? e.$6 == state.selectedJobId
+          : e.$1 == state.selectedJob,
       orElse: () => state.jobs.first,
     );
+    if (state.selectedJobId.isNotEmpty && j.$6 != state.selectedJobId) {
+      return const Center(child: Text('This opening is no longer available.'));
+    }
+    final details = state.jobDetails[j.$6]?['details'] as Map<String, dynamic>?;
+    final applicationKey = j.$6.isEmpty ? j.$1 : j.$6;
     return ui.list([
       ui.panel(
         Column(
@@ -86,46 +102,41 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
             Text(j.$2),
             const SizedBox(height: 16),
             ui.caption('${j.$3} · ${j.$5} · ${j.$4}'),
-            ui.caption('Posted 2 days ago'),
+            ui.caption('Published opening'),
           ],
         ),
       ),
       ui.heading('About the Job'),
-      const Text(
-        'Join a creative, growing team. Build meaningful work, collaborate with talented people, and develop your career.',
-        style: TextStyle(height: 1.7),
-      ),
-      ui.heading('Key Responsibilities'),
-      const Text(
-        '• Plan and execute projects with your team\n• Measure performance and share insights\n• Collaborate across teams\n• Bring fresh ideas and keep learning',
-        style: TextStyle(height: 2),
+      Text(
+        details?['description'] as String? ??
+            'See the recruiter for further details.',
+        style: const TextStyle(height: 1.7),
       ),
       ui.heading('Requirements'),
-      const Text(
-        '• 0–2 years of relevant experience\n• Strong communication and analytical skills\n• A portfolio or examples of your work\n• Degree or equivalent practical experience',
-        style: TextStyle(height: 2),
+      Text(
+        '${details?['experience'] ?? 'Experience: contact recruiter'}\n${details?['qualification'] ?? 'Qualification: contact recruiter'}',
+        style: const TextStyle(height: 2),
       ),
       ui.heading('Skills'),
       Wrap(
         spacing: 8,
-        children: [
-          'Communication',
-          'Analytics',
-          'Teamwork',
-        ].map((s) => Chip(label: Text(s))).toList(),
+        children: ((details?['skills'] as List?) ?? const <String>[])
+            .whereType<String>()
+            .map((s) => Chip(label: Text(s)))
+            .toList(),
       ),
       const SizedBox(height: 20),
       FilledButton.icon(
         label: Text(
           _submitting
               ? 'Submitting...'
-              : state.applied.contains(j.$1)
+              : state.applied.contains(applicationKey)
               ? 'Application submitted'
               : 'Apply Now',
         ),
-        onPressed: _submitting || state.applied.contains(j.$1)
+        onPressed: _submitting || state.applied.contains(applicationKey)
             ? null
-            : () => _apply(j.$1, j.$2, j.$3),
+            : () => _apply(j.$1, j.$2, j.$3, j.$6),
         icon: const Icon(Icons.send),
       ),
       TextButton(
