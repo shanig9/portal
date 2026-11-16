@@ -12,14 +12,28 @@ import 'package:http_parser/http_parser.dart';
 
 import 'api_config.dart';
 
+class ReelsApiException implements Exception {
+  ReelsApiException(this.status, this.message);
+  final int status;
+  final String message;
+  @override
+  String toString() => message;
+}
+
 class Reel {
   Reel.fromJson(Map<String, dynamic> json)
     : id = json['id'] as String,
       url = json['url'] as String,
       type = json['type'] as String,
       caption = json['caption'] as String,
-      author = json['author'] as String;
+      author = json['author'] as String,
+      remoteId = json['remoteId'] as String?,
+      pending = json['pending'] == true,
+      needsAttention = json['needsAttention'] == true;
   final String id, url, type, caption, author;
+  final String? remoteId;
+  final bool pending;
+  final bool needsAttention;
 }
 
 class ReelsPage {
@@ -40,15 +54,21 @@ class ReelsService {
     try {
       for (final item in await readLocalReels()) {
         if (item['pending'] != true ||
+            item['needsAttention'] == true ||
             item['ownerId'] != FirebaseAuth.instance.currentUser?.uid) {
           continue;
         }
-        final remote = await upload(
-          await readReelBytes(item['url'] as String),
-          item['filename'] as String,
-          item['caption'] as String,
-        );
-        await markReelSynced(item, remote.id);
+        try {
+          final remote = await upload(
+            await readReelBytes(item['url'] as String),
+            item['filename'] as String,
+            item['caption'] as String,
+          );
+          await markReelSynced(item, remote.id);
+        } on ReelsApiException catch (error) {
+          if (![400, 413, 415, 422].contains(error.status)) rethrow;
+          await updateReelMetadata({...item, 'needsAttention': true});
+        }
       }
     } finally {
       _syncing = false;
@@ -62,10 +82,7 @@ class ReelsService {
               Firebase.apps.isNotEmpty &&
               item['ownerId'] == FirebaseAuth.instance.currentUser?.uid,
         )
-        .map(
-          (item) =>
-              Reel.fromJson({...item, 'id': item['remoteId'] ?? item['id']}),
-        )
+        .map((item) => Reel.fromJson(item))
         .toList();
     final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
     final assets =
@@ -185,6 +202,12 @@ class ReelsService {
   }
 
   Map<String, dynamic> _decode(http.Response response) {
+    if (response.statusCode == 413) {
+      throw ReelsApiException(
+        413,
+        'This video is too large to share. Choose a smaller video.',
+      );
+    }
     Map<String, dynamic> body;
     try {
       body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -197,7 +220,10 @@ class ReelsService {
       throw Exception('The reels service returned an invalid response.');
     }
     if (response.statusCode >= 400) {
-      throw Exception(body['error'] ?? 'Unable to load reels.');
+      throw ReelsApiException(
+        response.statusCode,
+        body['error'] as String? ?? 'Unable to load reels.',
+      );
     }
     return body;
   }

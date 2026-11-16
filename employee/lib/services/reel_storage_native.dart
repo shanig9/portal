@@ -61,12 +61,13 @@ VideoPlayerController localReelPlayer(String path) =>
 Future<Uint8List> readReelBytes(String url) =>
     File.fromUri(Uri.parse(url)).readAsBytes();
 Future<void> markReelSynced(Map<String, dynamic> item, String remoteId) async {
+  await updateReelMetadata({...item, 'remoteId': remoteId, 'pending': false});
+}
+
+Future<void> updateReelMetadata(Map<String, dynamic> item) async {
   final directory = await _directory();
   final file = File('${directory.path}/${item['id']}.json');
   final temporary = File('${file.path}.tmp');
-  await temporary.writeAsString(
-    jsonEncode({...item, 'remoteId': remoteId, 'pending': false}),
-    flush: true,
-  );
+  await temporary.writeAsString(jsonEncode(item), flush: true);
   await temporary.rename(file.path);
 }

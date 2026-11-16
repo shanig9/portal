@@ -2,6 +2,24 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Career Connect employee (deployed server)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/employee",
+      "program": "${workspaceFolder}/employee/lib/main.dart",
+      "flutterMode": "debug",
+      "toolArgs": ["--dart-define-from-file=config/production.example.json"]
+    },
+    {
+      "name": "Career Connect HR (deployed server)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/hr",
+      "program": "${workspaceFolder}/hr/lib/main.dart",
+      "flutterMode": "debug",
+      "toolArgs": ["--dart-define-from-file=config/production.example.json"]
+    },
+    {
       "name": "Career Connect employee (USB phone)",
       "type": "dart",
       "request": "launch",

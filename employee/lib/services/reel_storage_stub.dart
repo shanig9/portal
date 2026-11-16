@@ -17,3 +17,4 @@ VideoPlayerController localReelPlayer(String path) =>
 Future<Uint8List> readReelBytes(String url) async =>
     throw UnsupportedError('Mobile only');
 Future<void> markReelSynced(Map<String, dynamic> item, String remoteId) async {}
+Future<void> updateReelMetadata(Map<String, dynamic> item) async {}

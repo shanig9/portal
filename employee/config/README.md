@@ -1,5 +1,7 @@
 # Career Connect API configuration
 
+The default API origin is `https://portal-server-go1e.vercel.app` in debug and release builds. `API_BASE_URL` overrides this when supplied. Select **Career Connect employee (deployed server)** in VS Code to use the deployed backend without USB port forwarding. Rebuild/restart the app after changing its API configuration.
+
 `local-usb.json` supplies the employee app's compile-time `API_BASE_URL`. It applies to both reels and application/document services. Putting this variable only in `server/.env` does not configure Flutter.
 
 Connect one Android phone by USB, enable USB debugging, and accept its authorization prompt. Start the API with `npm start` from `server/`. From the repository root, choose **Career Connect employee (USB phone)** in VS Code's Run and Debug menu. Its pre-launch task forwards the phone's port 3000 to this computer's port 3000.
@@ -30,7 +32,7 @@ After deploying the API, copy the production template from the employee director
 Copy-Item config/production.example.json config/production.json
 ```
 
-Replace `https://api.example.com` in `config/production.json` with your real HTTPS API origin (for example, the backend's assigned Vercel domain). Do not append `/api`; services append their endpoint paths. The example domain is a placeholder and does not run this backend. `production.json` is ignored by Git. The API URL is public configuration, not a secret; never put Firebase private keys or Supabase server keys in these Flutter files.
+The template uses `https://portal-server-go1e.vercel.app`. Do not append `/api`; services append their endpoint paths. `production.json` is ignored by Git. The API URL is public configuration, not a secret; never put Firebase private keys or Supabase server keys in these Flutter files.
 
 Check the deployed server's `/health` endpoint, then build from `employee/`:
 

@@ -28,7 +28,7 @@ From `hr/`, copy the template:
 Copy-Item config/production.example.json config/production.json
 ```
 
-Replace `https://api.example.com` with the real HTTPS backend origin, matching the employee configuration. Do not append `/api`. The example is a placeholder. `production.json` is ignored by Git. Never add server secrets or service-account credentials to either Flutter configuration.
+The template uses `https://portal-server-go1e.vercel.app`, matching the employee configuration. Do not append `/api`. `production.json` is ignored by Git. Never add server secrets or service-account credentials to either Flutter configuration. Select **Career Connect HR (deployed server)** in VS Code to use this configuration.
 
 Build from `hr/`:
 

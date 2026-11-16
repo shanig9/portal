@@ -27,12 +27,29 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   final _reels = <Reel>[];
   late final PageController _pages;
   bool _loading = false, _uploading = false, _foreground = true;
-  String? _error, _cursor;
+  String? _cursor;
   int _active = 0;
   Timer? _syncTimer;
   Future<void> _syncPending() async {
     try {
       await _service.syncPending();
+      if (!mounted) return;
+      final device = await _service.deviceReels();
+      if (!mounted) return;
+      setState(() {
+        for (var i = 0; i < _reels.length; i++) {
+          final matches = device.where((item) => item.id == _reels[i].id);
+          if (matches.isNotEmpty) _reels[i] = matches.first;
+        }
+        final remoteIds = device
+            .map((item) => item.remoteId)
+            .whereType<String>()
+            .toSet();
+        final activeId = _reels.isEmpty ? null : _reels[_active].id;
+        _reels.removeWhere((item) => remoteIds.contains(item.id));
+        final index = _reels.indexWhere((item) => item.id == activeId);
+        _active = index < 0 ? 0 : index;
+      });
     } catch (_) {
       // Keep saved videos queued until a later foreground retry.
     }
@@ -46,7 +63,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     _load();
     _syncPending();
     _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (_foreground) _syncPending();
+      if (_foreground) {
+        _syncPending();
+        _load();
+      }
     });
   }
 
@@ -54,6 +74,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (mounted) {
       setState(() => _foreground = state == AppLifecycleState.resumed);
+      if (_foreground) {
+        _syncPending();
+        _load();
+      }
     }
   }
 
@@ -69,40 +93,30 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     if (_loading) return;
     setState(() {
       _loading = true;
-      _error = null;
     });
     try {
       if (!more) {
         final device = await _service.deviceReels();
         if (!mounted) return;
         setState(() {
-          _reels
-            ..clear()
-            ..addAll(device);
-          _active = 0;
-          _cursor = null;
+          _reels.addAll(
+            device.where((item) => !_reels.any((r) => r.id == item.id)),
+          );
         });
       }
       final page = await _service.list(cursor: more ? _cursor : null);
       if (!mounted) return;
       setState(() {
-        if (!more) {
-          _active = 0;
-        }
         _reels.addAll(
-          page.items.where((item) => !_reels.any((r) => r.id == item.id)),
+          page.items.where(
+            (item) =>
+                !_reels.any((r) => r.id == item.id || r.remoteId == item.id),
+          ),
         );
         _cursor = page.nextCursor;
       });
-      if (!more && _pages.hasClients) _pages.jumpToPage(0);
-    } catch (error) {
-      if (mounted) {
-        setState(
-          () => _error = _reels.isEmpty
-              ? 'Choose a video to start your device library. Online reels are temporarily unavailable.'
-              : 'Showing saved reels. Online reels will return when connected.',
-        );
-      }
+    } catch (_) {
+      // Retain the visible feed and retry quietly on the next refresh.
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -136,13 +150,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       setState(() {
         _reels.insert(0, reel);
         _active = 0;
-        _error = null;
       });
       if (_pages.hasClients) _pages.jumpToPage(0);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Saved on your phone. Will post when connected.'),
-        ),
+        const SnackBar(content: Text('Reel saved. Sharing in the background.')),
       );
     } catch (error) {
       if (mounted) {
@@ -170,45 +181,28 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
             spacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Text(
-                'Career Connect Reels\nYour device library + online reels',
-              ),
+              const Text('Career Connect Reels'),
               IconButton(
                 tooltip: 'Refresh reels',
                 onPressed: _loading || _uploading ? null : () => _load(),
                 icon: const Icon(Icons.refresh),
               ),
               FilledButton.icon(
-                onPressed: _uploading || _loading ? null : _upload,
+                onPressed: _uploading ? null : _upload,
                 icon: const Icon(Icons.add),
                 label: Text(_uploading ? 'Saving...' : 'Add video'),
               ),
             ],
           ),
         ),
-        if (_uploading || _loading) const LinearProgressIndicator(),
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                Text(_error!),
-                TextButton(
-                  onPressed: () => _load(more: _reels.isNotEmpty),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
+        if (_uploading) const LinearProgressIndicator(),
         Expanded(
           child: _reels.isEmpty
               ? Center(
                   child: Text(
                     _loading
                         ? 'Loading reels...'
-                        : _error != null
-                        ? 'Reels could not be loaded.'
-                        : 'No reels yet. Share your first image or video.',
+                        : 'Add a video to start your reels.',
                   ),
                 )
               : PageView.builder(
@@ -267,8 +261,7 @@ class _CaptionDialogState extends State<_CaptionDialog> {
       maxLines: 3,
       decoration: const InputDecoration(
         labelText: 'Caption',
-        helperText:
-            'Saved on your phone, then posted when connected. Max 60 seconds.',
+        helperText: 'Your video is saved first and shared automatically. Max 60 seconds.',
       ),
     ),
     actions: [
@@ -425,6 +418,13 @@ class _ReelCardState extends State<_ReelCard> {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white),
               ),
+              if (widget.reel.needsAttention)
+                const Text(
+                  'Saved privately. Choose a supported video up to 60 seconds and 50 MB to share.',
+                  style: TextStyle(color: Colors.white70),
+                )
+              else if (widget.reel.pending)
+                const Text('Sharing…', style: TextStyle(color: Colors.white70)),
               if (_video?.value.isInitialized == true)
                 Row(
                   children: [
