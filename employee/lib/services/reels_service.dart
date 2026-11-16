@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
+import 'reel_storage.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:http/http.dart' as http;
@@ -26,6 +30,53 @@ class ReelsPage {
 }
 
 class ReelsService {
+  Future<List<Reel>> deviceReels() async {
+    final local = (await readLocalReels()).map(Reel.fromJson).toList();
+    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+    final assets =
+        manifest
+            .listAssets()
+            .where(
+              (path) =>
+                  path.startsWith('assets/reels/') && path.endsWith('.mp4'),
+            )
+            .toList()
+          ..sort();
+    return [
+      ...local,
+      for (final path in assets)
+        Reel.fromJson({
+          'id': path,
+          'url': path,
+          'type': 'video',
+          'caption': 'Career Connect',
+          'author': 'Career Connect',
+        }),
+    ];
+  }
+
+  Future<Reel> saveOnDevice(
+    Uint8List bytes,
+    String name,
+    String caption,
+  ) async {
+    final extension = name.split('.').last.toLowerCase();
+    if (!['mp4', 'mov', 'webm'].contains(extension)) {
+      throw Exception('Choose an MP4, MOV or WebM video.');
+    }
+    if (bytes.isEmpty || bytes.length > 50 * 1024 * 1024) {
+      throw Exception('Choose a video of up to 50 MB.');
+    }
+    final data = <String, dynamic>{
+      'id': 'local-${DateTime.now().microsecondsSinceEpoch}',
+      'type': 'video',
+      'caption': caption,
+      'author': 'You · On this device',
+    };
+    final url = await saveLocalReel(bytes, extension, data);
+    return Reel.fromJson({...data, 'url': url});
+  }
+
   static String get baseUrl => ApiConfig.baseUrl;
 
   static String errorMessage(Object error) {

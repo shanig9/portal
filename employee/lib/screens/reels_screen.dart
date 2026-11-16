@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:video_player/video_player.dart';
 
 import '../services/reels_service.dart';
+import '../services/reel_storage.dart';
 import '../state/employee_controller.dart';
 
 class ReelsScreen extends StatefulWidget {
@@ -55,11 +56,21 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       _error = null;
     });
     try {
+      if (!more) {
+        final device = await _service.deviceReels();
+        if (!mounted) return;
+        setState(() {
+          _reels
+            ..clear()
+            ..addAll(device);
+          _active = 0;
+          _cursor = null;
+        });
+      }
       final page = await _service.list(cursor: more ? _cursor : null);
       if (!mounted) return;
       setState(() {
         if (!more) {
-          _reels.clear();
           _active = 0;
         }
         _reels.addAll(
@@ -70,7 +81,11 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       if (!more && _pages.hasClients) _pages.jumpToPage(0);
     } catch (error) {
       if (mounted) {
-        setState(() => _error = ReelsService.errorMessage(error));
+        setState(
+          () => _error = _reels.isEmpty
+              ? 'Choose a video to start your device library. Online reels are temporarily unavailable.'
+              : 'Showing saved reels. Online reels will return when connected.',
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -85,7 +100,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     try {
       final file = await FilePicker.pickFile(
         type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'mp4', 'mov', 'webm'],
+        allowedExtensions: ['mp4', 'mov', 'webm'],
       );
       if (file == null || !mounted) return;
       final size = await file.length();
@@ -98,11 +113,8 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         builder: (_) => const _CaptionDialog(),
       );
       if (caption == null) return;
-      final reel = await _service.upload(
-        await file.readAsBytes(),
-        file.name,
-        caption,
-      );
+      final bytes = await file.readAsBytes();
+      final reel = await _service.saveOnDevice(bytes, file.name, caption);
       if (!mounted) return;
       setState(() {
         _reels.insert(0, reel);
@@ -110,9 +122,9 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         _error = null;
       });
       if (_pages.hasClients) _pages.jumpToPage(0);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Your reel is published.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reel saved on this device.')),
+      );
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -139,7 +151,9 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
             spacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Text('Career Connect Reels\nVideos up to 60 seconds'),
+              const Text(
+                'Career Connect Reels\nYour device library + online reels',
+              ),
               IconButton(
                 tooltip: 'Refresh reels',
                 onPressed: _loading || _uploading ? null : () => _load(),
@@ -148,7 +162,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
               FilledButton.icon(
                 onPressed: _uploading || _loading ? null : _upload,
                 icon: const Icon(Icons.add),
-                label: Text(_uploading ? 'Uploading...' : 'Upload'),
+                label: Text(_uploading ? 'Saving...' : 'Add video'),
               ),
             ],
           ),
@@ -234,7 +248,7 @@ class _CaptionDialogState extends State<_CaptionDialog> {
       maxLines: 3,
       decoration: const InputDecoration(
         labelText: 'Caption',
-        helperText: 'Videos must be 60 seconds or shorter.',
+        helperText: 'Saved on this device. Visible only to you.',
       ),
     ),
     actions: [
@@ -244,7 +258,7 @@ class _CaptionDialogState extends State<_CaptionDialog> {
       ),
       FilledButton(
         onPressed: () => Navigator.pop(context, _caption.text.trim()),
-        child: const Text('Publish'),
+        child: const Text('Save on device'),
       ),
     ],
   );
@@ -292,9 +306,12 @@ class _ReelCardState extends State<_ReelCard> {
     }
     if (_video != null) return;
     _failed = false;
-    final controller = VideoPlayerController.networkUrl(
-      Uri.parse(widget.reel.url),
-    );
+    final url = widget.reel.url;
+    final controller = url.startsWith('assets/')
+        ? VideoPlayerController.asset(url)
+        : url.startsWith('file:')
+        ? localReelPlayer(url)
+        : VideoPlayerController.networkUrl(Uri.parse(url));
     _video = controller;
     controller.addListener(_onVideoChanged);
     try {

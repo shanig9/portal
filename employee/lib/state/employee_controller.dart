@@ -72,7 +72,10 @@ class EmployeeController extends ChangeNotifier {
   AuthAccount? account;
 
   void _setAccount(AuthAccount value) {
-    if (account?.uid != value.uid) applied.clear();
+    if (account?.uid != value.uid) {
+      applied.clear();
+      pendingApplications.clear();
+    }
     account = value;
     data['Full Name'] = value.name ?? '';
     data['Email ID'] = value.email ?? '';
@@ -91,6 +94,7 @@ class EmployeeController extends ChangeNotifier {
         applied.addAll(
           applications.map((item) => item['job_key']).whereType<String>(),
         );
+        pendingApplications.removeAll(applied);
         data.remove('applicationsError');
       });
     } catch (_) {
@@ -117,6 +121,7 @@ class EmployeeController extends ChangeNotifier {
       data.clear();
       saved.clear();
       applied.clear();
+      pendingApplications.clear();
       posts.clear();
       skills
         ..clear()
@@ -144,6 +149,7 @@ class EmployeeController extends ChangeNotifier {
   ];
   final history = <String>[];
   final saved = <String>{}, applied = <String>{};
+  final pendingApplications = <String>{};
   final posts = <String>[];
   static const _defaultSkills = <String>[
     'Digital Marketing',

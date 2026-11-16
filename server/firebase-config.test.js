@@ -77,7 +77,7 @@ test('Vercel entrypoint exports an Express handler without binding a local port'
       finally { server.close(); }
     });
   `;
-  const result = spawnSync(process.execPath, ['-e', source], {
+  const result = spawnSync(process.execPath, ['--no-experimental-require-module', '-e', source], {
     cwd: __dirname, encoding: 'utf8', timeout: 15000,
     env: {
       ...process.env, VERCEL: '1', PORT: 'not-a-port',

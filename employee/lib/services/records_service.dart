@@ -9,6 +9,10 @@ import 'package:http_parser/http_parser.dart';
 
 import 'api_config.dart';
 
+class ApplicationConfirmationPending implements Exception {
+  const ApplicationConfirmationPending();
+}
+
 class RecordsService {
   static String get baseUrl => ApiConfig.baseUrl;
   Uri _uri(String path) {
@@ -112,6 +116,16 @@ class RecordsService {
           .timeout(const Duration(seconds: 60));
       _decode(response);
     } on TimeoutException {
+      return _confirmApplication(jobId, headers);
+    } on http.ClientException {
+      return _confirmApplication(jobId, headers);
+    }
+  }
+
+  Future<void> _confirmApplication(
+    String jobId,
+    Map<String, String> headers,
+  ) async {
       // A lost response does not mean the database insert failed.
       try {
         final response = await http
@@ -122,10 +136,7 @@ class RecordsService {
       } catch (_) {
         // Leave the outcome unknown if the confirmation request also fails.
       }
-      throw Exception(
-        'Submission could not be confirmed. Check My Applications before trying again.',
-      );
-    }
+      throw const ApplicationConfirmationPending();
   }
 
   Map<String, dynamic> _decode(http.Response response) {
