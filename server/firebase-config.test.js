@@ -15,6 +15,30 @@ const account = {
   client_email: 'server@example.com', private_key: privateKey,
 };
 
+test('hosted startup failure returns safe diagnostics instead of crashing the function', () => {
+  const result = spawnSync(process.execPath, ['-e', `
+    const assert = require('node:assert/strict');
+    const app = require('./index');
+    const server = app.listen(0, '127.0.0.1', async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:' + server.address().port + '/health');
+        assert.equal(response.status, 503);
+        assert.equal(response.headers.get('cache-control'), 'no-store');
+        const body = await response.json();
+        assert.equal(body.code, 'STARTUP_FAILED');
+        assert.equal(body.stage, 'checking environment variables');
+        assert.ok(body.missingVariables.includes('CLOUDINARY_API_SECRET'));
+        assert.ok(!JSON.stringify(body).includes('private_key'));
+      } catch (error) { console.error(error); process.exitCode = 1; }
+      finally { server.close(); }
+    });
+  `], {
+    cwd: __dirname, encoding: 'utf8', timeout: 15000,
+    env: { ...process.env, VERCEL: '1', CLOUDINARY_API_SECRET: '' },
+  });
+  assert.equal(result.status, 0, result.stderr || result.error?.message);
+});
+
 test('hosted Firebase JSON works without a local credential file', () => {
   const options = firebaseOptions({
     FIREBASE_PROJECT_ID: account.project_id, VERCEL: '1',

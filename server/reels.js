@@ -6,6 +6,7 @@ const { randomUUID } = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { authenticate } = require('./authentication');
+const { cloudinaryNetworkOptions } = require('./cloudinary-network');
 
 const MAX_BYTES = 50 * 1024 * 1024;
 const formats = { image: ['jpg', 'jpeg', 'png', 'webp'], video: ['mp4', 'mov', 'webm'] };
@@ -91,6 +92,7 @@ function createApp({ cloudinary, verifyToken, store, origins = [], recordsReposi
     try {
       media = await new Promise((resolve, reject) => {
         cloudinary.uploader.upload_stream({
+          ...cloudinaryNetworkOptions(),
           resource_type: type, folder: 'career-connect/reels', public_id: randomUUID(),
           allowed_formats: formats[type],
         }, (error, result) => error ? reject(error) : resolve(result)).end(req.file.buffer);
@@ -99,7 +101,7 @@ function createApp({ cloudinary, verifyToken, store, origins = [], recordsReposi
       return res.status(502).json({ error: 'Media upload failed. Please try again.' });
     }
     async function cleanup() {
-      await cloudinary.uploader.destroy(media.public_id, { resource_type: media.resource_type });
+      await cloudinary.uploader.destroy(media.public_id, { resource_type: media.resource_type, ...cloudinaryNetworkOptions() });
     }
     const invalid = validateMedia(media);
     if (invalid) {

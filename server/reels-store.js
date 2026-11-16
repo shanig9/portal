@@ -8,11 +8,6 @@ function check(result) {
 
 function fromRow(row) {
   return {
-    async findByPublicId(publicId) {
-      const row = check(await client.from('career_reels').select(FIELDS)
-        .eq('public_id', publicId).maybeSingle());
-      return row ? fromRow(row) : null;
-    },
     id: row.id, ownerId: row.owner_uid, author: row.author, caption: row.caption,
     type: row.type, url: row.url, publicId: row.public_id,
     thumbnailUrl: row.thumbnail_url, duration: row.duration, createdAt: row.created_at,
@@ -21,6 +16,11 @@ function fromRow(row) {
 
 function createReelsStore(client) {
   return {
+    async findByPublicId(publicId) {
+      const row = check(await client.from('career_reels').select(FIELDS)
+        .eq('public_id', publicId).maybeSingle());
+      return row ? fromRow(row) : null;
+    },
     async list({ limit, cursor }) {
       let query = client.from('career_reels').select(FIELDS)
         .order('created_at', { ascending: false }).order('id', { ascending: false });

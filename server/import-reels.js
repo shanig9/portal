@@ -2,6 +2,7 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const { createHash } = require('node:crypto');
 const { validateMedia, MAX_BYTES } = require('./reels');
+const { cloudinaryNetworkOptions } = require('./cloudinary-network');
 
 function reelIdentity(bytes) {
   const hash = createHash('sha256').update(bytes).digest('hex');
@@ -15,6 +16,14 @@ function reelIdentity(bytes) {
   };
 }
 
+function safeError(error) {
+  let message = String(error.message || error.error?.message || error.name || 'Upload/database error');
+  for (const key of ['CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'SUPABASE_SECRET_KEY']) {
+    if (process.env[key]) message = message.split(process.env[key]).join('[redacted]');
+  }
+  return message.replace(/https?:\/\/\S+/g, '[provider URL]').slice(0, 240);
+}
+
 // Trusted server administration: creates Career Connect library posts, not user uploads.
 async function importReel({ filename, caption, cloudinary, store }) {
   const stat = await fs.stat(filename);
@@ -26,6 +35,7 @@ async function importReel({ filename, caption, cloudinary, store }) {
   if (existing) return { reel: existing, skipped: true };
 
   const media = await cloudinary.uploader.upload(filename, {
+    ...cloudinaryNetworkOptions(),
     resource_type: 'video', public_id: identity.publicId, overwrite: false,
     format: 'mp4', timeout: 180000,
     // H.264/AAC is supported by Android. Leave room for audio/frame rounding.
@@ -33,7 +43,7 @@ async function importReel({ filename, caption, cloudinary, store }) {
   });
   const invalid = validateMedia(media);
   if (invalid) {
-    await cloudinary.uploader.destroy(media.public_id, { resource_type: 'video' });
+    await cloudinary.uploader.destroy(media.public_id, { resource_type: 'video', ...cloudinaryNetworkOptions() });
     throw new Error(invalid);
   }
   const reel = {
@@ -50,7 +60,7 @@ async function importReel({ filename, caption, cloudinary, store }) {
     // An overlapping import may have already committed this same clip.
     const saved = await store.findByPublicId(identity.publicId).catch(() => null);
     if (saved) return { reel: saved, skipped: true };
-    await cloudinary.uploader.destroy(media.public_id, { resource_type: 'video' });
+    await cloudinary.uploader.destroy(media.public_id, { resource_type: 'video', ...cloudinaryNetworkOptions() });
     throw error;
   }
   return { reel, skipped: false };
@@ -87,8 +97,7 @@ async function main(files) {
       console.log(`${skipped ? 'Already published' : 'Published'}: ${path.basename(filename)} (${reel.duration.toFixed(2)} seconds)`);
     } catch (error) {
       failed = true;
-      // Provider errors may contain signed upload details. Keep CLI output minimal.
-      console.error(`Failed: ${path.basename(filename)} (${error.http_code || error.code || 'upload/database error'})`);
+      console.error(`Failed: ${path.basename(filename)} (${error.http_code || error.code || 'upload/database error'}): ${safeError(error)}`);
     }
   }
   if (failed) process.exitCode = 1;

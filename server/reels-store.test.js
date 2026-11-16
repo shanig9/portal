@@ -65,3 +65,13 @@ test('database feed rejects invalid or missing cursors', async () => {
   assert.equal(requests.length, 0);
   await assert.rejects(store.list({ limit: 10, cursor: first.id }), { status: 400 });
 });
+
+test('import lookup belongs to the store and returns only reel fields', async () => {
+  const { store, requests } = fixture([{ body: first }, { body: null }]);
+  const found = await store.findByPublicId(first.public_id);
+  assert.equal(found.id, first.id);
+  assert.equal(found.publicId, first.public_id);
+  assert.equal(found.findByPublicId, undefined);
+  assert.equal(requests[0].url.searchParams.get('public_id'), `eq.${first.public_id}`);
+  assert.equal(await store.findByPublicId('missing'), null);
+});
