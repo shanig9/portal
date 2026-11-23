@@ -8,7 +8,8 @@ const { createClient } = require('@supabase/supabase-js');
   const client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY,
     { auth: { persistSession: false, autoRefreshToken: false } });
   for (const table of ['career_documents', 'career_applications']) {
-    const result = await client.from(table).select('id', { count: 'exact', head: true }).limit(1);
+    const result = await client.from(table).select('id')
+      .eq('id', '00000000-0000-0000-0000-000000000000').limit(1);
     if (result.error) throw new Error(`Cannot query ${table}: ${result.error.message}`);
     console.log(`${table}: connected`);
   }

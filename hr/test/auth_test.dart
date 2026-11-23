@@ -33,6 +33,17 @@ Future<void> enter(WidgetTester tester, String label, String value) async {
 }
 
 void main() {
+  testWidgets('Phone login shows +91 and sends the full number', (tester) async {
+    final auth = FakeHrAuthService()..automaticPhone = true;
+    await tester.pumpWidget(MyApp(auth: auth));
+    await tap(tester, 'Login as Employer');
+    await tap(tester, 'Phone OTP');
+    expect(find.text('+91 '), findsOneWidget);
+    await enter(tester, 'Phone Number', '9876543210');
+    await tap(tester, 'Send OTP');
+    expect(auth.lastPhone, '+919876543210');
+  });
+
   testWidgets('Email login validates, rejects invalid credentials, then signs in', (tester) async {
     final auth = FakeHrAuthService();
     await tester.pumpWidget(MyApp(auth: auth));
@@ -53,12 +64,12 @@ void main() {
     expect(find.byType(LoginScreen), findsNothing);
   });
 
-  testWidgets('Email registration checks passwords and creates a Firebase account', (tester) async {
+  testWidgets('Email registration checks passwords and verifies phone before opening HR', (tester) async {
     final auth = FakeHrAuthService();
     await tester.pumpWidget(HrAuthScope(auth: auth, child: const MaterialApp(home: RegistrationScreen())));
     await enter(tester, 'Company Name *', 'Career Connect Test Company');
     await enter(tester, 'Location *', 'Pune');
-    await enter(tester, 'Company Phone *', '+919876543210');
+    await enter(tester, 'Company Phone *', '9876543210');
     await enter(tester, 'Official Email *', 'hr@example.com');
     await enter(tester, 'Password', 'password123');
     await enter(tester, 'Confirm Password', 'different');
@@ -68,6 +79,16 @@ void main() {
     await enter(tester, 'Confirm Password', 'password123');
     await tap(tester, 'I agree to the Terms & Conditions and Privacy Policy');
     await tap(tester, 'Create Employer Account');
+    expect(auth.lastPhone, '+919876543210');
+    expect(auth.registerCalls, 0);
+    expect(find.byType(PortalScreen), findsNothing);
+    await enter(tester, 'Verification code', '123456');
+    auth.failure = FirebaseAuthException(code: 'invalid-verification-code');
+    await tap(tester, 'Verify and create account');
+    expect(auth.registerCalls, 0);
+    expect(find.byType(PortalScreen), findsNothing);
+    auth.failure = null;
+    await tap(tester, 'Verify and create account');
     expect(auth.registerCalls, 1);
     expect(find.byType(PortalScreen), findsOneWidget);
   });

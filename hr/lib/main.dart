@@ -57,8 +57,10 @@ const brandBlue = Color(0xFF007AFF);
 const ink = Color(0xFF10133F);
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, this.auth});
+  const MyApp({super.key, this.auth, this.navigatorKey, this.builder});
   final HrAuthService? auth;
+  final GlobalKey<NavigatorState>? navigatorKey;
+  final TransitionBuilder? builder;
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +69,9 @@ class MyApp extends StatelessWidget {
     return HrAuthScope(
       auth: service,
       child: MaterialApp(
-        title: 'Career Connect HR Portal',
+        title: 'Career Connect',
+        navigatorKey: navigatorKey,
+        builder: builder,
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,

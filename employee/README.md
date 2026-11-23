@@ -7,22 +7,24 @@ cd C:\Users\punel\portal\employee
 flutter run
 ```
 
-The Android app uses Firebase Authentication for email/password registration and login, Google sign-in, phone OTP, password reset, and sign-out. Existing Firebase sessions restore Home at startup. A successful email registration opens Personal Details. Profile forms and other app data still use local preview state; they are not stored in Firebase.
+The Android app uses Firebase Authentication for email/password registration and login, Google sign-in, phone OTP, password reset, and sign-out. Existing Firebase sessions restore Home at startup. Email/password registration verifies the mobile number before linking email sign-in and opening Personal Details. Profile forms and other app data still use local preview state; they are not stored in Firebase.
 
 ## Firebase Android setup
 
 The Android package is `com.example.employee`. Its Firebase configuration belongs at `android/app/google-services.json`. Enable Email/Password, Google, and Phone in Firebase Authentication. In Project settings, select the Android app and add the signing certificate SHA-1 and SHA-256; download the updated configuration afterward.
 
-For this machine's debug keystore:
+From the `employee/` directory, get the fingerprints for your local debug build:
 
-```text
-SHA-1: C0:B3:4C:94:20:2B:95:E9:7E:39:9B:02:A3:62:92:7A:0A:6C:FA:31
-SHA-256: 0F:40:B8:35:45:C5:14:C8:56:BF:46:EC:42:29:4F:09:65:25:1F:D6:FF:0A:FA:35:2D:BE:AF:DC:C2:47:07:18
+```powershell
+cd android
+.\gradlew.bat signingReport
 ```
+
+Use the SHA-1 and SHA-256 listed under `Variant: debug`.
 
 For release builds, register the actual release / Google Play app-signing certificates too. Google sign-in needs an Android OAuth client matching the package and signing fingerprint and a web OAuth client (the latter supplies the server client ID through `google-services.json`).
 
-Phone sign-in expects an international number such as `+919876543210`. Use Firebase Authentication's configured test phone numbers and codes on an emulator. For real SMS, configure the Firebase project's billing and SMS region policy; quotas and charges apply. Phone numbers entered during email registration are contact details only, not verified phone credentials. Signing in separately with a phone can create a separate Firebase account; account linking is not implemented.
+Phone sign-in and registration display `+91` and ask users to enter their 10-digit Indian mobile number. Use Firebase Authentication's configured test phone numbers and codes on an emulator. For real SMS, configure the Firebase project's billing and SMS region policy; quotas and charges apply.
 
 Only Android Firebase configuration is supplied. Web/iOS require their own Firebase app configuration before authentication can run there. Never use real account credentials in automated tests. Tests inject a fake authentication service and do not contact Firebase.
 

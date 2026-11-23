@@ -3,6 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'verified_phone_registration.dart';
+
 class HrAccount {
   const HrAccount({required this.uid, this.name, this.email, this.phone});
   final String uid;
@@ -10,18 +12,25 @@ class HrAccount {
 }
 
 class HrPhoneChallenge {
-  const HrPhoneChallenge(this.confirm);
+  const HrPhoneChallenge(this.confirm, {this.resendToken});
+  final int? resendToken;
   final Future<HrAccount> Function(String code) confirm;
 }
 
 abstract class HrAuthService {
   HrAccount? get currentAccount;
   Future<HrAccount> signIn(String email, String password);
-  Future<HrAccount> register(String companyName, String email, String password);
+  Future<HrAccount> register(
+    String companyName,
+    String email,
+    String password, {
+    required String verifiedPhoneUid,
+  });
   Future<void> resetPassword(String email);
   Future<void> signOut();
   Future<void> sendPhoneCode(
     String phone, {
+    int? resendToken,
     required void Function(HrPhoneChallenge) onCodeSent,
     required void Function(HrAccount) onVerified,
     required void Function(Object) onError,
@@ -58,22 +67,21 @@ class FirebaseHrAuthService implements HrAuthService {
   Future<HrAccount> register(
     String companyName,
     String email,
-    String password,
-  ) async {
-    final result = await _auth.createUserWithEmailAndPassword(
-      email: email.trim(),
+    String password, {
+    required String verifiedPhoneUid,
+  }) async {
+    final user = await linkVerifiedPhoneRegistration(
+      _auth,
+      verifiedPhoneUid: verifiedPhoneUid,
+      displayName: companyName,
+      email: email,
       password: password,
     );
-    // Account creation succeeded even if the optional display-name update fails.
-    try {
-      await result.user!.updateDisplayName(companyName.trim());
-    } on FirebaseAuthException catch (_) {
-      /* The user can still sign in. */
-    }
     return HrAccount(
-      uid: result.user!.uid,
+      uid: user.uid,
       name: companyName.trim(),
-      email: result.user!.email,
+      email: email.trim(),
+      phone: user.phoneNumber,
     );
   }
 
@@ -86,6 +94,7 @@ class FirebaseHrAuthService implements HrAuthService {
   @override
   Future<void> sendPhoneCode(
     String phone, {
+    int? resendToken,
     required void Function(HrPhoneChallenge) onCodeSent,
     required void Function(HrAccount) onVerified,
     required void Function(Object) onError,
@@ -99,6 +108,7 @@ class FirebaseHrAuthService implements HrAuthService {
     }
     await _auth.verifyPhoneNumber(
       phoneNumber: phone,
+      forceResendingToken: resendToken,
       verificationCompleted: (credential) async {
         try {
           onVerified(_result(await _auth.signInWithCredential(credential)));
@@ -107,13 +117,14 @@ class FirebaseHrAuthService implements HrAuthService {
         }
       },
       verificationFailed: onError,
-      codeSent: (id, _) => onCodeSent(
+      codeSent: (id, token) => onCodeSent(
         HrPhoneChallenge(
           (code) async => _result(
             await _auth.signInWithCredential(
               PhoneAuthProvider.credential(verificationId: id, smsCode: code),
             ),
           ),
+          resendToken: token,
         ),
       ),
       codeAutoRetrievalTimeout: (_) {},
@@ -142,7 +153,11 @@ String hrAuthError(Object error) {
       'invalid-email' => 'Enter a valid email address.',
       'weak-password' => 'Use a stronger password with at least 8 characters.',
       'user-disabled' => 'This account has been disabled.',
-      'invalid-phone-number' => 'Include your country code, for example +91.',
+      'invalid-phone-number' => 'Enter a valid 10-digit Indian mobile number.',
+      'phone-verification-required' => 'Verify your mobile number to register.',
+      'phone-already-registered' =>
+        'This mobile number already has an account. Please sign in.',
+      'registration-failed' => 'Could not finish registration. Try again or sign in if you already have an account.',
       'invalid-verification-code' =>
         'The verification code is incorrect. Please try again.',
       'session-expired' ||
@@ -153,6 +168,10 @@ String hrAuthError(Object error) {
         'Check your internet connection and try again.',
       'quota-exceeded' =>
         'SMS is temporarily unavailable. Please try again later.',
+      'app-not-authorized' ||
+      'invalid-app-credential' ||
+      'missing-client-identifier' =>
+        'Firebase could not verify this Android app for phone sign-in.',
       'operation-not-allowed' =>
         'This sign-in method is currently unavailable.',
       _ => 'Authentication could not complete. Please try again.',

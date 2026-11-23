@@ -52,7 +52,7 @@ class EmployeeController extends ChangeNotifier {
     final account = this.auth.currentAccount;
     if (account != null) {
       _setAccount(account);
-      if (page == 'Login') page = 'Home';
+      if (this.page == 'Login') this.page = 'Reels';
     }
   }
   final AuthService auth;
@@ -109,7 +109,7 @@ class EmployeeController extends ChangeNotifier {
   void authenticated(AuthAccount value, {bool onboarding = false}) =>
       update(() {
         _setAccount(value);
-        page = onboarding ? 'Personal Details' : 'Home';
+        page = onboarding ? 'Personal Details' : 'Reels';
         tab = 0;
         history.clear();
       });
@@ -121,6 +121,7 @@ class EmployeeController extends ChangeNotifier {
       data.clear();
       saved.clear();
       applied.clear();
+      likedReels.clear();
       pendingApplications.clear();
       posts.clear();
       skills
@@ -138,7 +139,7 @@ class EmployeeController extends ChangeNotifier {
     });
   }
 
-  final tabs = ['Home', 'Jobs', 'Reels', 'Messages', 'Profile'];
+  final tabs = ['Reels', 'Jobs', 'Messages', 'Profile'];
   final steps = [
     'Personal Details',
     'Job Preferences',
@@ -149,6 +150,7 @@ class EmployeeController extends ChangeNotifier {
   ];
   final history = <String>[];
   final saved = <String>{}, applied = <String>{};
+  final likedReels = <String>{};
   final pendingApplications = <String>{};
   final posts = <String>[];
   static const _defaultSkills = <String>[
@@ -227,7 +229,7 @@ class EmployeeController extends ChangeNotifier {
   }
 
   void showHome() => update(() {
-    page = 'Home';
+    page = 'Reels';
     tab = 0;
     history.clear();
   });

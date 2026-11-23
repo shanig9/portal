@@ -8,7 +8,11 @@ import 'models.dart';
 import 'widgets.dart';
 import 'main.dart';
 
-List<Widget> companyFields(Company company, {bool registration = false}) => [
+List<Widget> companyFields(
+  Company company, {
+  bool registration = false,
+  String? phonePrefix,
+}) => [
   input('Company Name', company.name, (value) => company.name = value),
   dropdown('Industry *', company.industry, [
     'IT Services & Consulting',
@@ -54,6 +58,7 @@ List<Widget> companyFields(Company company, {bool registration = false}) => [
     company.phone,
     (value) => company.phone = value,
     keyboard: TextInputType.phone,
+    prefixText: phonePrefix,
   ),
   input(
     'Official Email',

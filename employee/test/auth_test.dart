@@ -47,37 +47,48 @@ void main() {
     expect(field.obscureText, isFalse);
     await tapVisible(tester, submit);
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.byTooltip('Create Post'), findsOneWidget);
+    expect(find.byTooltip('Open posts'), findsOneWidget);
     expect(auth.loginCalls, 1);
   });
 
-  testWidgets('Registration checks confirmation and opens personal details', (
-    tester,
-  ) async {
-    final auth = FakeAuthService();
-    await tester.pumpWidget(MyApp(initialPage: 'Registration', auth: auth));
-    expect(find.byType(RegistrationScreen), findsOneWidget);
-    await enter(tester, 'Full Name', 'Asha Rao');
-    await enter(tester, 'Email Address', 'asha@example.com');
-    await enter(tester, 'Mobile Number', '9876543210');
-    await enter(tester, 'Password', 'password123');
-    await enter(tester, 'Confirm Password', 'different');
-    await tapVisible(
-      tester,
-      find.widgetWithText(FilledButton, 'Create Account'),
-    );
-    expect(find.text('Passwords do not match'), findsOneWidget);
-    expect(auth.registrationCalls, 0);
-    await enter(tester, 'Confirm Password', 'password123');
-    await tapVisible(
-      tester,
-      find.widgetWithText(FilledButton, 'Create Account'),
-    );
-    expect(find.byType(PersonalDetailsScreen), findsOneWidget);
-    expect(find.text('Asha Rao'), findsOneWidget);
-    expect(find.text('asha@example.com'), findsOneWidget);
-    expect(auth.registrationCalls, 1);
-  });
+  testWidgets(
+    'Registration checks passwords and verifies phone before profile setup',
+    (tester) async {
+      final auth = FakeAuthService();
+      await tester.pumpWidget(MyApp(initialPage: 'Registration', auth: auth));
+      expect(find.byType(RegistrationScreen), findsOneWidget);
+      await enter(tester, 'Full Name', 'Asha Rao');
+      await enter(tester, 'Email Address', 'asha@example.com');
+      await enter(tester, 'Mobile Number', '9876543210');
+      await enter(tester, 'Password', 'password123');
+      await enter(tester, 'Confirm Password', 'different');
+      await tapVisible(
+        tester,
+        find.widgetWithText(FilledButton, 'Create Account'),
+      );
+      expect(find.text('Passwords do not match'), findsOneWidget);
+      expect(auth.registrationCalls, 0);
+      await enter(tester, 'Confirm Password', 'password123');
+      await tapVisible(
+        tester,
+        find.widgetWithText(FilledButton, 'Create Account'),
+      );
+      expect(auth.lastPhone, '+919876543210');
+      expect(auth.registrationCalls, 0);
+      expect(find.byType(PersonalDetailsScreen), findsNothing);
+      await enter(tester, 'Verification Code', '123456');
+      auth.failure = FirebaseAuthException(code: 'invalid-verification-code');
+      await tapVisible(tester, find.text('Verify and create account'));
+      expect(auth.registrationCalls, 0);
+      expect(find.byType(PersonalDetailsScreen), findsNothing);
+      auth.failure = null;
+      await tapVisible(tester, find.text('Verify and create account'));
+      expect(find.byType(PersonalDetailsScreen), findsOneWidget);
+      expect(find.text('Asha Rao'), findsOneWidget);
+      expect(find.text('asha@example.com'), findsOneWidget);
+      expect(auth.registrationCalls, 1);
+    },
+  );
 
   testWidgets('Rejected credentials stay on login and display an error', (
     tester,
@@ -119,7 +130,11 @@ void main() {
     final auth = FakeAuthService();
     await tester.pumpWidget(MyApp(auth: auth));
     await tapVisible(tester, find.text('Sign in with phone OTP'));
-    await enter(tester, 'Phone Number', '+919876543210');
+    expect(find.text('+91 '), findsOneWidget);
+    await enter(tester, 'Phone Number', '98765');
+    await tapVisible(tester, find.text('Send OTP'));
+    expect(auth.lastPhone, isNull);
+    await enter(tester, 'Phone Number', '9876543210');
     await tapVisible(tester, find.text('Send OTP'));
     expect(auth.lastPhone, '+919876543210');
     auth.failure = FirebaseAuthException(code: 'invalid-verification-code');

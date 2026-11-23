@@ -1,20 +1,56 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:employee/main.dart';
+import 'package:employee/screens/reels_screen.dart';
+import 'package:employee/services/reels_service.dart';
+import 'package:employee/state/employee_controller.dart';
 
 void main() {
-  testWidgets('Reels show connection guidance and keep navigation available', (tester) async {
+  testWidgets('Home opens reels and can enter and exit full screen', (
+    tester,
+  ) async {
     await tester.pumpWidget(const MyApp(initialPage: 'Reels'));
     await tester.pumpAndSettle();
-    expect(find.text('The reels service is not connected yet.'), findsOneWidget);
-    expect(find.text('Upload'), findsOneWidget);
-    expect(find.text('Retry'), findsOneWidget);
+    expect(find.text('Add video'), findsOneWidget);
+    expect(find.byTooltip('Refresh reels'), findsOneWidget);
+    expect(find.text('Reels'), findsNothing);
     expect(find.byType(NavigationBar).hitTestable(), findsOneWidget);
+    await tester.tap(find.byTooltip('Full screen'));
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationBar), findsNothing);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationBar), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+  testWidgets('Reel Like button toggles the selected reel', (tester) async {
+    final state = EmployeeController();
+    addTearDown(state.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AnimatedBuilder(
+            animation: state,
+            builder: (_, _) => ReelsScreen(
+              state: state,
+              immersive: false,
+              onToggleImmersive: () {},
+              service: _PreviewReels(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Like reel'));
+    await tester.pumpAndSettle();
+    expect(state.likedReels, {'test-reel'});
+    await tester.tap(find.byTooltip('Unlike reel'));
+    expect(state.likedReels, isEmpty);
   });
   testWidgets('Shared navigation opens each main screen', (tester) async {
     await tester.pumpWidget(const MyApp(initialPage: 'Home'));
-    for (final name in ['Jobs', 'Reels', 'Messages', 'Profile', 'Home']) {
+    for (final name in ['Jobs', 'Messages', 'Profile', 'Home']) {
       await tester.tap(
         find.descendant(
           of: find.byType(NavigationBar),
@@ -22,10 +58,14 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(
-        find.descendant(of: find.byType(AppBar), matching: find.text(name)),
-        findsOneWidget,
-      );
+      if (name == 'Home') {
+        expect(find.byType(ReelsScreen), findsOneWidget);
+      } else {
+        expect(
+          find.descendant(of: find.byType(AppBar), matching: find.text(name)),
+          findsOneWidget,
+        );
+      }
       expect(tester.takeException(), isNull);
     }
   });
@@ -83,4 +123,20 @@ void main() {
       expect(tester.takeException(), isNull, reason: name);
     }
   });
+}
+
+class _PreviewReels extends ReelsService {
+  @override
+  Future<List<Reel>> deviceReels() async => [];
+
+  @override
+  Future<ReelsPage> list({String? cursor}) async => ReelsPage([
+    Reel.fromJson({
+      'id': 'test-reel',
+      'url': 'https://example.com/reel.jpg',
+      'type': 'image',
+      'caption': 'Test reel',
+      'author': 'Career Connect',
+    }),
+  ], null);
 }

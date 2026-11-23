@@ -28,10 +28,12 @@ class Reel {
       caption = json['caption'] as String,
       author = json['author'] as String,
       remoteId = json['remoteId'] as String?,
+      uploadError = json['uploadError'] as String?,
       pending = json['pending'] == true,
       needsAttention = json['needsAttention'] == true;
   final String id, url, type, caption, author;
   final String? remoteId;
+  final String? uploadError;
   final bool pending;
   final bool needsAttention;
 }
@@ -43,35 +45,44 @@ class ReelsPage {
 }
 
 class ReelsService {
-  bool _syncing = false;
+  static final _syncing = <String>{};
   Future<void> syncPending() async {
-    if (_syncing ||
-        Firebase.apps.isEmpty ||
-        FirebaseAuth.instance.currentUser == null) {
-      return;
-    }
-    _syncing = true;
+    if (Firebase.apps.isEmpty) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || !_syncing.add(user.uid)) return;
     try {
       for (final item in await readLocalReels()) {
+        if (FirebaseAuth.instance.currentUser?.uid != user.uid) return;
         if (item['pending'] != true ||
-            item['needsAttention'] == true ||
-            item['ownerId'] != FirebaseAuth.instance.currentUser?.uid) {
+            item['ownerId'] != user.uid ||
+            (item['needsAttention'] == true && item['uploadError'] != null)) {
           continue;
         }
         try {
-          final remote = await upload(
+          final remote = await _upload(
+            user,
+            item['id'] as String,
             await readReelBytes(item['url'] as String),
             item['filename'] as String,
             item['caption'] as String,
           );
-          await markReelSynced(item, remote.id);
-        } on ReelsApiException catch (error) {
-          if (![400, 413, 415, 422].contains(error.status)) rethrow;
-          await updateReelMetadata({...item, 'needsAttention': true});
+          await markReelSynced({
+            ...item,
+            'needsAttention': false,
+            'uploadError': null,
+          }, remote.id);
+        } catch (error) {
+          await updateReelMetadata({
+            ...item,
+            'needsAttention':
+                error is ReelsApiException &&
+                [413, 415, 422].contains(error.status),
+            'uploadError': errorMessage(error),
+          });
         }
       }
     } finally {
-      _syncing = false;
+      _syncing.remove(user.uid);
     }
   }
 
@@ -143,19 +154,20 @@ class ReelsService {
     return error.toString().replaceFirst('Exception: ', '');
   }
 
-  Uri _uri([Map<String, String>? query]) {
+  Uri _uri({String path = '', Map<String, String>? query}) {
     if (baseUrl.isEmpty) {
       throw Exception(
         'Reels are unavailable because the app has no server connection configured.',
       );
     }
-    return Uri.parse('${baseUrl.replaceFirst(RegExp(r"/$"), "")}/api/reels')
-        .replace(queryParameters: query);
+    return Uri.parse(
+      '${baseUrl.replaceFirst(RegExp(r"/$"), "")}/api/reels$path',
+    ).replace(queryParameters: query);
   }
 
   Future<ReelsPage> list({String? cursor}) async {
     final response = await http
-        .get(_uri({'limit': '10', 'cursor': ?cursor}))
+        .get(_uri(query: {'limit': '10', 'cursor': ?cursor}))
         .timeout(const Duration(seconds: 20));
     final body = _decode(response);
     return ReelsPage(
@@ -164,42 +176,87 @@ class ReelsService {
     );
   }
 
-  Future<Reel> upload(Uint8List bytes, String name, String caption) async {
-    if (Firebase.apps.isEmpty || FirebaseAuth.instance.currentUser == null) {
-      throw Exception('Sign in to upload a reel.');
-    }
-    final token = await FirebaseAuth.instance.currentUser!.getIdToken();
+  Future<Reel> _upload(
+    User user,
+    String uploadId,
+    Uint8List bytes,
+    String name,
+    String caption,
+  ) async {
+    final token = await user.getIdToken();
     final mime = {
-      'jpg': 'image/jpeg',
-      'jpeg': 'image/jpeg',
-      'png': 'image/png',
-      'webp': 'image/webp',
       'mp4': 'video/mp4',
       'mov': 'video/quicktime',
       'webm': 'video/webm',
     }[name.split('.').last.toLowerCase()];
-    if (mime == null) throw Exception('Unsupported image or video type.');
-    final request = http.MultipartRequest('POST', _uri())
-      ..headers['Authorization'] = 'Bearer $token'
-      ..fields['caption'] = caption
-      ..files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename: name,
-          contentType: MediaType.parse(mime),
-        ),
-      );
+    if (mime == null) throw ReelsApiException(415, 'Unsupported video type.');
     final client = http.Client();
     try {
+      final ticket = await _post(client, '/upload-ticket', token, {
+        'uploadId': uploadId,
+      });
+      if (ticket['reel'] case final Map<String, dynamic> published) {
+        return Reel.fromJson(published);
+      }
+      final url = Uri.parse(ticket['url'] as String);
+      if (url.scheme != 'https' || url.host != 'api.cloudinary.com') {
+        throw Exception('The reels server returned an invalid upload URL.');
+      }
+      final request = http.MultipartRequest('POST', url)
+        ..fields.addAll(
+          (ticket['fields'] as Map<String, dynamic>).map(
+            (name, value) => MapEntry(name, value.toString()),
+          ),
+        )
+        ..files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            bytes,
+            filename: name,
+            contentType: MediaType.parse(mime),
+          ),
+        );
       final response = await http.Response.fromStream(
         await client.send(request).timeout(const Duration(minutes: 3)),
       ).timeout(const Duration(minutes: 3));
-      return Reel.fromJson(_decode(response));
+      if (response.statusCode == 413) {
+        throw ReelsApiException(413, 'Cloudinary rejected the video size.');
+      }
+      // A retry may find the same asset already uploaded, with overwrite off.
+      if (response.statusCode >= 400 && response.statusCode != 409) {
+        throw ReelsApiException(
+          502,
+          'Cloudinary rejected the video upload. Try again.',
+        );
+      }
+      return Reel.fromJson(
+        await _post(client, '/complete-upload', token, {
+          'uploadId': uploadId,
+          'caption': caption,
+        }),
+      );
     } finally {
       client.close();
     }
   }
+
+  Future<Map<String, dynamic>> _post(
+    http.Client client,
+    String path,
+    String? token,
+    Map<String, String> body,
+  ) async => _decode(
+    await client
+        .post(
+          _uri(path: path),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 30)),
+  );
 
   Map<String, dynamic> _decode(http.Response response) {
     if (response.statusCode == 413) {

@@ -16,11 +16,13 @@ In Vercel Settings > Environment Variables, configure `CLOUDINARY_CLOUD_NAME`, `
 
 Push the changed server files and lockfile, redeploy, and check `https://YOUR_DEPLOYMENT_HOST/health`. Then rebuild Flutter with `--dart-define=API_BASE_URL=https://YOUR_DEPLOYMENT_HOST`. There is no `:3000` suffix in the public HTTPS URL. Chat creation uses Vercel's `waitUntil` so it can complete after returning the saved application.
 
-Vercel Functions limit request bodies to 4.5 MB, including multipart overhead. The existing 50 MB reel and 10 MB PDF upload endpoints therefore cannot accept their full advertised sizes on Vercel. Supporting larger uploads there requires direct-to-provider uploads; alternatively host this API on a regular Node.js server with adequate request limits. See [Express on Vercel](https://vercel.com/docs/frameworks/backend/express) and [function limits](https://vercel.com/docs/functions/limitations).
+The employee app uploads reel video bytes directly to Cloudinary so they bypass Vercel's function request limit. Firebase-authenticated requests to this API get a signature and publish the verified video. The legacy multipart reel endpoint and the PDF endpoint are still subject to the [Vercel function request limit](https://vercel.com/docs/functions/limitations).
 
 - `GET /health`: health check.
 - `GET /api/reels?limit=10&cursor=<last-id>`: public feed, newest first, with `items` and `nextCursor`.
-- `POST /api/reels`: multipart `file` and optional `caption` (500 characters maximum). Requires `Authorization: Bearer <Firebase ID token>`. Returns the published reel.
+- `POST /api/reels/upload-ticket`: accepts a JSON `uploadId` and returns signed Cloudinary upload fields or an already published reel.
+- `POST /api/reels/complete-upload`: accepts the same JSON `uploadId` and an optional `caption` up to 500 characters. Verifies the video's size and duration in Cloudinary before adding it to the feed. Retrying returns the same reel.
+- `POST /api/reels`: legacy multipart endpoint for uploads within the host's request limit. All three write endpoints require `Authorization: Bearer <Firebase ID token>`.
 
 Accepts JPEG, PNG, WebP, MP4, MOV and WebM, up to 50 MB. Cloudinary metadata is checked before publication: videos must have a visual track and duration greater than zero and no longer than 60 seconds. Rejected media is deleted. The entire file is uploaded before duration validation; invalid videos may still incur provider usage. Uploads are limited to 10 requests per IP per 15 minutes.
 

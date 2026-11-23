@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:hr/verified_phone_registration.dart';
 
 class AuthAccount {
   const AuthAccount({required this.uid, this.name, this.email, this.phone});
@@ -10,19 +11,26 @@ class AuthAccount {
 }
 
 class PhoneChallenge {
-  const PhoneChallenge(this.confirm);
+  const PhoneChallenge(this.confirm, {this.resendToken});
+  final int? resendToken;
   final Future<AuthAccount> Function(String code) confirm;
 }
 
 abstract class AuthService {
   AuthAccount? get currentAccount;
   Future<AuthAccount> signIn(String email, String password);
-  Future<AuthAccount> register(String name, String email, String password);
+  Future<AuthAccount> register(
+    String name,
+    String email,
+    String password, {
+    required String verifiedPhoneUid,
+  });
   Future<AuthAccount> google();
   Future<void> resetPassword(String email);
   Future<void> signOut();
   Future<void> sendPhoneCode(
     String phone, {
+    int? resendToken,
     required void Function(PhoneChallenge) onCodeSent,
     required void Function(AuthAccount) onVerified,
     required void Function(Object) onError,
@@ -61,17 +69,21 @@ class FirebaseAuthService implements AuthService {
   Future<AuthAccount> register(
     String name,
     String email,
-    String password,
-  ) async {
-    final result = await _auth.createUserWithEmailAndPassword(
-      email: email.trim(),
+    String password, {
+    required String verifiedPhoneUid,
+  }) async {
+    final user = await linkVerifiedPhoneRegistration(
+      _auth,
+      verifiedPhoneUid: verifiedPhoneUid,
+      displayName: name,
+      email: email,
       password: password,
     );
-    await result.user!.updateDisplayName(name.trim());
     return AuthAccount(
-      uid: result.user!.uid,
+      uid: user.uid,
       name: name.trim(),
-      email: result.user!.email,
+      email: email.trim(),
+      phone: user.phoneNumber,
     );
   }
 
@@ -107,6 +119,7 @@ class FirebaseAuthService implements AuthService {
   @override
   Future<void> sendPhoneCode(
     String phone, {
+    int? resendToken,
     required void Function(PhoneChallenge) onCodeSent,
     required void Function(AuthAccount) onVerified,
     required void Function(Object) onError,
@@ -120,6 +133,7 @@ class FirebaseAuthService implements AuthService {
     }
     await _auth.verifyPhoneNumber(
       phoneNumber: phone,
+      forceResendingToken: resendToken,
       verificationCompleted: (credential) async {
         try {
           onVerified(_result(await _auth.signInWithCredential(credential)));
@@ -128,13 +142,14 @@ class FirebaseAuthService implements AuthService {
         }
       },
       verificationFailed: onError,
-      codeSent: (id, _) => onCodeSent(
+      codeSent: (id, token) => onCodeSent(
         PhoneChallenge(
           (code) async => _result(
             await _auth.signInWithCredential(
               PhoneAuthProvider.credential(verificationId: id, smsCode: code),
             ),
           ),
+          resendToken: token,
         ),
       ),
       codeAutoRetrievalTimeout: (_) {},
@@ -164,14 +179,21 @@ String authErrorMessage(Object error) {
         'Too many attempts. Please wait before trying again.',
       'network-request-failed' =>
         'Check your internet connection and try again.',
-      'invalid-phone-number' =>
-        'Enter your phone number with its country code, such as +91.',
+      'invalid-phone-number' => 'Enter a valid 10-digit Indian mobile number.',
+      'phone-verification-required' => 'Verify your mobile number to register.',
+      'phone-already-registered' =>
+        'This mobile number already has an account. Please sign in.',
+      'registration-failed' => 'Could not finish registration. Try again or sign in if you already have an account.',
       'invalid-verification-code' =>
         'The verification code is incorrect. Please try again.',
       'session-expired' ||
       'invalid-verification-id' => 'This code has expired. Request a new code.',
       'quota-exceeded' =>
         'SMS is temporarily unavailable. Please try again later.',
+      'app-not-authorized' ||
+      'invalid-app-credential' ||
+      'missing-client-identifier' =>
+        'Firebase could not verify this Android app for phone sign-in.',
       'operation-not-allowed' =>
         'This sign-in method is currently unavailable.',
       'account-exists-with-different-credential' =>

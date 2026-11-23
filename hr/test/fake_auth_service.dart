@@ -24,12 +24,18 @@ class FakeHrAuthService implements HrAuthService {
   Future<HrAccount> register(
     String companyName,
     String email,
-    String password,
-  ) async {
+    String password, {
+    required String verifiedPhoneUid,
+  }) async {
     registerCalls++;
     lastEmail = email;
     _check();
-    return account = HrAccount(uid: 'hr-user', name: companyName, email: email);
+    return account = HrAccount(
+      uid: verifiedPhoneUid,
+      name: companyName,
+      email: email,
+      phone: account?.phone,
+    );
   }
 
   @override
@@ -47,6 +53,7 @@ class FakeHrAuthService implements HrAuthService {
   @override
   Future<void> sendPhoneCode(
     String phone, {
+    int? resendToken,
     required void Function(HrPhoneChallenge) onCodeSent,
     required void Function(HrAccount) onVerified,
     required void Function(Object) onError,

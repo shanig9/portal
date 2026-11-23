@@ -38,6 +38,7 @@ class EmployeeShell extends StatefulWidget {
 
 class _EmployeeShellState extends State<EmployeeShell> {
   late final EmployeeController state;
+  bool immersiveReels = false;
   @override
   void initState() {
     super.initState();
@@ -56,6 +57,7 @@ class _EmployeeShellState extends State<EmployeeShell> {
     builder: (context, _) {
       final ui = EmployeeUi(context, state);
       final setup = state.steps.contains(state.page);
+      final reels = state.page == 'Reels';
       final auth = [
         'Login',
         'Registration',
@@ -63,102 +65,118 @@ class _EmployeeShellState extends State<EmployeeShell> {
         'Account',
         'Phone Login',
       ].contains(state.page);
-      return Scaffold(
-        appBar: AppBar(
-          leading: state.history.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: ui.avatar('CC', 16),
-                )
-              : IconButton(
-                  onPressed: state.back,
-                  icon: const EmployeeIcon(Icons.arrow_back),
-                ),
-          title: Text(
-            auth ? 'Career Connect' : state.page,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-          ),
-          actions: [
-            if (setup)
-              Center(
-                child: Text(
-                  '${state.steps.indexOf(state.page) + 1} of 6',
-                  style: const TextStyle(color: blue),
-                ),
-              ),
-            if (!auth && !setup)
-              IconButton(
-                tooltip: 'Notifications',
-                onPressed: () => state.open('Notifications'),
-                icon: const EmployeeIcon(Icons.notifications_none),
-              ),
-            if (!auth && !setup)
-              IconButton(
-                tooltip: 'All screens',
-                onPressed: ui.menu,
-                icon: const EmployeeIcon(Icons.grid_view_rounded),
-              ),
-          ],
-        ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Column(
-              children: [
-                if (setup)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(56, 0, 56, 8),
-                    child: LinearProgressIndicator(
-                      value: (state.steps.indexOf(state.page) + 1) / 6,
-                      color: blue,
+      return PopScope<void>(
+        canPop: !reels || !immersiveReels,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop && reels && immersiveReels) {
+            setState(() => immersiveReels = false);
+          }
+        },
+        child: Scaffold(
+          appBar: reels
+              ? null
+              : AppBar(
+                  leading: state.history.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: ui.avatar('CC', 16),
+                        )
+                      : IconButton(
+                          onPressed: state.back,
+                          icon: const EmployeeIcon(Icons.arrow_back),
+                        ),
+                  title: Text(
+                    auth ? 'Career Connect' : state.page,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                Expanded(child: screenFor()),
-              ],
-            ),
-          ),
+                  actions: [
+                    if (setup)
+                      Center(
+                        child: Text(
+                          '${state.steps.indexOf(state.page) + 1} of 6',
+                          style: const TextStyle(color: blue),
+                        ),
+                      ),
+                    if (!auth && !setup)
+                      IconButton(
+                        tooltip: 'Notifications',
+                        onPressed: () => state.open('Notifications'),
+                        icon: const EmployeeIcon(Icons.notifications_none),
+                      ),
+                    if (!auth && !setup)
+                      IconButton(
+                        tooltip: 'All screens',
+                        onPressed: ui.menu,
+                        icon: const EmployeeIcon(Icons.grid_view_rounded),
+                      ),
+                  ],
+                ),
+          body: reels
+              ? ReelsScreen(
+                  state: state,
+                  immersive: immersiveReels,
+                  onToggleImmersive: () =>
+                      setState(() => immersiveReels = !immersiveReels),
+                )
+              : Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: Column(
+                      children: [
+                        if (setup)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(56, 0, 56, 8),
+                            child: LinearProgressIndicator(
+                              value: (state.steps.indexOf(state.page) + 1) / 6,
+                              color: blue,
+                            ),
+                          ),
+                        Expanded(child: screenFor()),
+                      ],
+                    ),
+                  ),
+                ),
+          bottomNavigationBar: setup || auth || (reels && immersiveReels)
+              ? null
+              : NavigationBar(
+                  selectedIndex: state.tab,
+                  onDestinationSelected: (index) => state.update(() {
+                    state.tab = index;
+                    state.page = state.tabs[index];
+                    state.history.clear();
+                  }),
+                  destinations: const [
+                    NavigationDestination(
+                      icon: EmployeeIcon(Icons.home_outlined),
+                      label: 'Home',
+                    ),
+                    NavigationDestination(
+                      icon: EmployeeIcon(Icons.work_outline),
+                      label: 'Jobs',
+                    ),
+                    NavigationDestination(
+                      icon: EmployeeIcon(Icons.chat_bubble_outline),
+                      label: 'Messages',
+                    ),
+                    NavigationDestination(
+                      icon: EmployeeIcon(Icons.person_outline),
+                      label: 'Profile',
+                    ),
+                  ],
+                ),
+          floatingActionButton: state.page == 'Home'
+              ? FloatingActionButton(
+                  onPressed: ui.createPost,
+                  tooltip: 'Create Post',
+                  backgroundColor: blue,
+                  foregroundColor: Colors.white,
+                  child: const EmployeeIcon(Icons.add),
+                )
+              : null,
         ),
-        bottomNavigationBar: setup || auth
-            ? null
-            : NavigationBar(
-                selectedIndex: state.tab,
-                onDestinationSelected: (index) => state.update(() {
-                  state.tab = index;
-                  state.page = state.tabs[index];
-                  state.history.clear();
-                }),
-                destinations: const [
-                  NavigationDestination(
-                    icon: EmployeeIcon(Icons.home_outlined),
-                    label: 'Home',
-                  ),
-                  NavigationDestination(
-                    icon: EmployeeIcon(Icons.work_outline),
-                    label: 'Jobs',
-                  ),
-                  NavigationDestination(
-                    icon: EmployeeIcon(Icons.video_library_outlined),
-                    label: 'Reels',
-                  ),
-                  NavigationDestination(
-                    icon: EmployeeIcon(Icons.chat_bubble_outline),
-                    label: 'Messages',
-                  ),
-                  NavigationDestination(
-                    icon: EmployeeIcon(Icons.person_outline),
-                    label: 'Profile',
-                  ),
-                ],
-              ),
-        floatingActionButton: state.page == 'Home'
-            ? FloatingActionButton(
-                onPressed: ui.createPost,
-                tooltip: 'Create Post',
-                backgroundColor: blue,
-                foregroundColor: Colors.white,
-                child: const EmployeeIcon(Icons.add),
-              )
-            : null,
       );
     },
   );
@@ -167,7 +185,6 @@ class _EmployeeShellState extends State<EmployeeShell> {
     'Jobs' => JobsScreen(key: ValueKey(state.page), state: state),
     'Saved Jobs' => SavedJobsScreen(key: ValueKey(state.page), state: state),
     'Job Details' => JobDetailsScreen(key: ValueKey(state.page), state: state),
-    'Reels' => ReelsScreen(key: ValueKey(state.page), state: state),
     'Messages' => MessagesScreen(key: ValueKey(state.page), state: state),
     'Profile' => ProfileScreen(key: ValueKey(state.page), state: state),
     'My Applications' => ApplicationsScreen(

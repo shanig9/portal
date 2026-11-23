@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:firebase_core/firebase_core.dart';
 
-import 'app.dart';
+import 'career_connect_app.dart';
 export 'app.dart' show MyApp;
 
 void main() {
@@ -23,7 +23,7 @@ class _FirebaseStartupState extends State<_FirebaseStartup> {
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.done &&
           !snapshot.hasError) {
-        return const MyApp();
+        return const CareerConnectApp();
       }
       return MaterialApp(
         title: 'Career Connect',

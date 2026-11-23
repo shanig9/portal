@@ -1,22 +1,28 @@
 # Career Connect
 
-A job portal with separate Flutter frontends for employees and HR teams.
+A Flutter job portal for employees and HR teams. The combined Career Connect
+app starts from `employee/` and opens the selected flow from its welcome screen.
 
 - [Employee app](employee/README.md): job discovery, career feed, profile setup, applications, messages, login, and registration.
-- [HR app](hr/README.md): employer onboarding, application review, job management, and company profiles.
+- [HR app](hr/README.md): employer onboarding, application review, job management, and company profiles. It can also run on its own.
 - `server/`: Express API for authenticated Cloudinary image and video uploads and a paginated reels feed. See [media API setup](server/README.md).
 
 Most application screens use local preview data. The employee app includes Firebase authentication and an API-backed reels feed with image uploads and videos up to 60 seconds. Configure Firebase, Cloudinary, and `API_BASE_URL` using the media API setup guide to enable uploads and playback. Messaging remains preview data.
 
 ## Run an app
 
-Install Flutter, then run one of:
+Install Flutter, then run Career Connect:
 
 ```sh
 cd employee
 flutter pub get
 flutter run
 ```
+
+Choose **Employee / Job Seeker** or **HR / Employer** on the welcome screen.
+Both flows in this build use the Firebase configuration in `employee/`.
+
+To run the standalone HR app:
 
 ```sh
 cd hr

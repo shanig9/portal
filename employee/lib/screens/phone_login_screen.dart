@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../services/auth_service.dart';
@@ -7,9 +9,20 @@ import '../state/employee_controller.dart';
 import '../widgets/auth_widgets.dart';
 import '../widgets/employee_ui.dart';
 
+String indiaOtpPhone(String number) =>
+    '+91' +
+    number.replaceAll(RegExp(r'[\s-]'), '').replaceFirst(RegExp(r'^\+91'), '');
+
 class PhoneLoginScreen extends StatefulWidget {
-  const PhoneLoginScreen({super.key, required this.state});
+  const PhoneLoginScreen({
+    super.key,
+    required this.state,
+    this.registrationPhone,
+    this.completeRegistration,
+  });
   final EmployeeController state;
+  final String? registrationPhone;
+  final Future<AuthAccount> Function(AuthAccount)? completeRegistration;
   @override
   State<PhoneLoginScreen> createState() => _PhoneLoginScreenState();
 }
@@ -17,6 +30,7 @@ class PhoneLoginScreen extends StatefulWidget {
 class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   final _form = GlobalKey<FormState>();
   String phone = '', code = '';
+  String otpPhone = '';
   String? error;
   PhoneChallenge? challenge;
   bool busy = false, completed = false;
@@ -26,15 +40,44 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   Timer? requestTimeout;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.registrationPhone != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _send();
+      });
+    }
+  }
+
+  @override
   void dispose() {
     timer?.cancel();
     requestTimeout?.cancel();
     super.dispose();
   }
 
-  void _complete(AuthAccount account) {
+  Future<void> _complete(AuthAccount account) async {
     if (!mounted || completed) return;
     completed = true;
+    requestTimeout?.cancel();
+    final register = widget.completeRegistration;
+    if (register != null) {
+      setState(() => busy = true);
+      try {
+        final registered = await register(account);
+        if (mounted) Navigator.of(context).pop(registered);
+      } catch (failure) {
+        if (!mounted) return;
+        setState(() {
+          completed = false;
+          busy = false;
+          challenge = null;
+          code = '';
+          error = authErrorMessage(failure);
+        });
+      }
+      return;
+    }
     widget.state.authenticated(account);
   }
 
@@ -52,7 +95,12 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   }
 
   Future<void> _send({bool resend = false}) async {
-    if (!resend && !(_form.currentState?.validate() ?? false)) return;
+    final registrationPhone = widget.registrationPhone;
+    if (!resend &&
+        registrationPhone == null &&
+        !(_form.currentState?.validate() ?? false))
+      return;
+    if (!resend) otpPhone = registrationPhone ?? indiaOtpPhone(phone);
     final currentRequest = ++request;
     setState(() {
       busy = true;
@@ -60,6 +108,9 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
     });
     void failed(Object failure) {
       if (!mounted || currentRequest != request || completed) return;
+      if (kDebugMode && failure is FirebaseAuthException) {
+        debugPrint('Firebase OTP request failed: ' + failure.code);
+      }
       requestTimeout?.cancel();
       setState(() {
         busy = false;
@@ -78,7 +129,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
     });
     try {
       await widget.state.auth.sendPhoneCode(
-        phone.replaceAll(RegExp(r'[\s-]'), ''),
+        otpPhone,
+        resendToken: resend ? challenge?.resendToken : null,
         onCodeSent: (value) {
           if (!mounted || currentRequest != request || completed) return;
           requestTimeout?.cancel();
@@ -105,7 +157,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
       error = null;
     });
     try {
-      _complete(await challenge!.confirm(code.trim()));
+      await _complete(await challenge!.confirm(code.trim()));
     } catch (failure) {
       if (mounted) setState(() => error = authErrorMessage(failure));
     } finally {
@@ -116,90 +168,103 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   @override
   Widget build(BuildContext context) {
     final ui = EmployeeUi(context, widget.state);
-    return Form(
-      key: _form,
-      child: ui.list([
-        ui.heading(
-          challenge == null ? 'Sign in with phone' : 'Verify your phone',
-        ),
-        ui.caption(
-          challenge == null
-              ? 'Enter your phone number including the country code, for example +91.'
-              : 'Enter the 6-digit code sent to $phone.',
-        ),
-        const SizedBox(height: 20),
-        if (challenge == null) ...[
-          AuthField(
-            label: 'Phone Number',
-            icon: Icons.phone_outlined,
-            keyboard: TextInputType.phone,
-            onChanged: (value) => phone = value,
-            validator: (value) =>
-                RegExp(r'^\+[1-9]\d{7,14}$')
-                    .hasMatch((value ?? '').replaceAll(RegExp(r'[\s-]'), ''))
-                ? null
-                : 'Include your country code, such as +91.',
+    final registrationPhone = widget.registrationPhone;
+    return PopScope<AuthAccount>(
+      canPop: registrationPhone == null || !busy,
+      child: Form(
+        key: _form,
+        child: ui.list([
+          ui.heading(
+            challenge == null && registrationPhone == null
+                ? 'Sign in with phone'
+                : 'Verify your phone',
           ),
-          const Text(
-            'By continuing, you agree to receive a verification SMS. Message rates may apply. Google processes your number to prevent spam and abuse.',
-          ),
-          const SizedBox(height: 16),
-        ] else
-          AuthField(
-            label: 'Verification Code',
-            icon: Icons.sms_outlined,
-            keyboard: TextInputType.number,
-            onChanged: (value) => code = value,
-            validator: (value) =>
-                RegExp(r'^\d{6}$').hasMatch(value?.trim() ?? '')
-                ? null
-                : 'Enter the 6-digit verification code',
-          ),
-        if (error != null) AuthError(message: error!),
-        FilledButton(
-          onPressed: busy
-              ? null
-              : challenge == null
-              ? _send
-              : _verify,
-          child: Text(
-            busy
-                ? 'Please wait...'
+          ui.caption(
+            registrationPhone != null && challenge == null
+                ? 'Verify your mobile number $registrationPhone to create your account.'
                 : challenge == null
-                ? 'Send OTP'
-                : 'Verify and sign in',
+                ? 'Enter your 10-digit mobile number.'
+                : 'Enter the 6-digit SMS code for $otpPhone.',
           ),
-        ),
-        if (challenge != null) ...[
-          TextButton(
-            onPressed: busy || resendSeconds > 0
-                ? null
-                : () => _send(resend: true),
-            child: Text(
-              resendSeconds > 0
-                  ? 'Resend code in ${resendSeconds}s'
-                  : 'Resend code',
+          const SizedBox(height: 20),
+          if (challenge == null && registrationPhone == null) ...[
+            AuthField(
+              label: 'Phone Number',
+              icon: Icons.phone_outlined,
+              keyboard: TextInputType.phone,
+              prefixText: '+91 ',
+              onChanged: (value) => phone = value,
+              validator: (value) =>
+                  RegExp(r'^\+91\d{10}$').hasMatch(indiaOtpPhone(value ?? ''))
+                  ? null
+                  : 'Enter a 10-digit mobile number.',
             ),
-          ),
-          TextButton(
+            const Text(
+              'By continuing, you agree to receive a verification SMS. Message rates may apply. Google processes your number to prevent spam and abuse.',
+            ),
+            const SizedBox(height: 16),
+          ] else if (challenge != null)
+            AuthField(
+              label: 'Verification Code',
+              icon: Icons.sms_outlined,
+              keyboard: TextInputType.number,
+              onChanged: (value) => code = value,
+              validator: (value) =>
+                  RegExp(r'^\d{6}$').hasMatch(value?.trim() ?? '')
+                  ? null
+                  : 'Enter the 6-digit verification code',
+            ),
+          if (error != null) AuthError(message: error!),
+          FilledButton(
             onPressed: busy
                 ? null
-                : () => setState(() {
-                    request++;
-                    challenge = null;
-                    code = '';
-                    error = null;
-                    timer?.cancel();
-                    requestTimeout?.cancel();
-                  }),
-            child: const Text('Use a different phone number'),
+                : challenge == null
+                ? _send
+                : _verify,
+            child: Text(
+              busy
+                  ? 'Please wait...'
+                  : challenge == null
+                  ? 'Send OTP'
+                  : registrationPhone == null
+                  ? 'Verify and sign in'
+                  : 'Verify and create account',
+            ),
           ),
-        ],
-        TextButton(
-          onPressed: () => widget.state.open('Login'),
-          child: const Text('Back to email login'),
-        ),
-      ]),
+          if (challenge != null) ...[
+            TextButton(
+              onPressed: busy || resendSeconds > 0
+                  ? null
+                  : () => _send(resend: true),
+              child: Text(
+                resendSeconds > 0
+                    ? 'Resend code in ${resendSeconds}s'
+                    : 'Resend code',
+              ),
+            ),
+            if (registrationPhone == null)
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () => setState(() {
+                        request++;
+                        challenge = null;
+                        phone = '';
+                        code = '';
+                        error = null;
+                        timer?.cancel();
+                        requestTimeout?.cancel();
+                      }),
+                child: const Text('Use a different phone number'),
+              ),
+          ],
+          if (registrationPhone == null)
+            TextButton(
+              onPressed: () => widget.state.open('Login'),
+              child: const Text('Back to email login'),
+            ),
+        ]),
+      ),
     );
   }
 }

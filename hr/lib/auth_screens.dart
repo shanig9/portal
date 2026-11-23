@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'auth_service.dart';
@@ -48,11 +50,14 @@ String? _emailValidator(String? value) =>
     RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value?.trim() ?? '')
     ? null
     : 'Enter a valid email address';
+String _otpPhone(String value) =>
+    '+91' +
+    value.replaceAll(RegExp(r'[\s-]'), '').replaceFirst(RegExp(r'^\+91'), '');
+
 String? _phoneValidator(String? value) =>
-    RegExp(r'^\+[1-9]\d{7,14}$')
-        .hasMatch((value ?? '').replaceAll(RegExp(r'[\s-]'), ''))
+    RegExp(r'^\+91\d{10}$').hasMatch(_otpPhone(value ?? ''))
     ? null
-    : 'Include your country code, for example +91.';
+    : 'Enter a 10-digit mobile number.';
 
 class AuthInput extends StatefulWidget {
   const AuthInput({
@@ -62,12 +67,14 @@ class AuthInput extends StatefulWidget {
     this.password = false,
     this.keyboard,
     this.validator,
+    this.prefixText,
   });
   final String label;
   final ValueChanged<String> onChanged;
   final bool password;
   final TextInputType? keyboard;
   final FormFieldValidator<String>? validator;
+  final String? prefixText;
   @override
   State<AuthInput> createState() => _AuthInputState();
 }
@@ -89,6 +96,10 @@ class _AuthInputState extends State<AuthInput> {
           (value) => (value?.isEmpty ?? true) ? 'Enter ${widget.label}' : null,
       decoration: InputDecoration(
         labelText: widget.label,
+        prefixText: widget.prefixText,
+        floatingLabelBehavior: widget.prefixText == null
+            ? null
+            : FloatingLabelBehavior.always,
         prefixIcon: HrIcon(hrFieldIcon(widget.label)),
         suffixIcon: widget.password
             ? IconButton(
@@ -138,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _submit() async {
     if (!form.currentState!.validate()) return;
     if (!emailMode) {
-      go(context, OtpScreen(phone: phone.replaceAll(RegExp(r'[\s-]'), '')));
+      go(context, OtpScreen(phone: _otpPhone(phone)));
       return;
     }
     setState(() {
@@ -196,6 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
             AuthInput(
               label: 'Phone Number',
               keyboard: TextInputType.phone,
+              prefixText: '+91 ',
               onChanged: (value) => phone = value,
               validator: _phoneValidator,
             ),
@@ -270,43 +282,39 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     ..location = ''
     ..phone = ''
     ..email = '';
-  bool emailMode = true, agreed = false, busy = false;
+  bool emailMode = true, agreed = false;
   String password = '';
   String? error;
-  Future<void> _submit() async {
+  void _submit() {
     if (!form.currentState!.validate()) return;
     if (!agreed) {
       setState(() => error = 'Please accept the terms to continue.');
       return;
     }
-    if (!emailMode) {
-      final validation = _phoneValidator(company.phone);
-      if (validation != null) {
-        setState(() => error = validation);
-        return;
-      }
-      go(
-        context,
-        OtpScreen(
-          company: company,
-          phone: company.phone.replaceAll(RegExp(r'[\s-]'), ''),
-        ),
-      );
+    final validation = _phoneValidator(company.phone);
+    if (validation != null) {
+      setState(() => error = validation);
       return;
     }
-    setState(() {
-      busy = true;
-      error = null;
-    });
-    try {
-      final account = await HrAuthScope.of(context)
-          .register(company.name, company.email, password);
-      if (mounted) _finishAuth(context, account, company);
-    } catch (failure) {
-      if (mounted) setState(() => error = hrAuthError(failure));
-    } finally {
-      if (mounted) setState(() => busy = false);
-    }
+    final auth = HrAuthScope.of(context);
+    final draft = company.copy();
+    final registrationPassword = password;
+    setState(() => error = null);
+    go(
+      context,
+      OtpScreen(
+        company: draft,
+        phone: _otpPhone(draft.phone),
+        completeRegistration: emailMode
+            ? (verified) => auth.register(
+                draft.name,
+                draft.email,
+                registrationPassword,
+                verifiedPhoneUid: verified.uid,
+              )
+            : null,
+      ),
+    );
   }
 
   @override
@@ -326,15 +334,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               ButtonSegment(value: false, label: Text('Phone OTP')),
             ],
             selected: {emailMode},
-            onSelectionChanged: busy
-                ? null
-                : (value) => setState(() {
-                    emailMode = value.first;
-                    error = null;
-                  }),
+            onSelectionChanged: (value) => setState(() {
+              emailMode = value.first;
+              error = null;
+            }),
           ),
           const SizedBox(height: 24),
-          ...companyFields(company, registration: true),
+          ...companyFields(company, registration: true, phonePrefix: '+91 '),
           if (emailMode) ...[
             AuthInput(
               label: 'Password',
@@ -353,29 +359,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ? null
                   : 'Passwords do not match',
             ),
-            muted(
-              'Your company phone is a contact number. Phone sign-in uses separate OTP verification.',
-            ),
           ],
+          muted('We’ll send an SMS code to verify your company phone number.'),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             value: agreed,
-            onChanged: busy
-                ? null
-                : (value) => setState(() => agreed = value ?? false),
+            onChanged: (value) => setState(() => agreed = value ?? false),
             title: const Text(
               'I agree to the Terms & Conditions and Privacy Policy',
             ),
           ),
           if (error != null) _AuthError(error!),
           FilledButton(
-            onPressed: busy ? null : _submit,
+            onPressed: _submit,
             child: Text(
-              busy
-                  ? 'Creating account...'
-                  : emailMode
-                  ? 'Create Employer Account'
-                  : 'Register & Get OTP',
+              emailMode ? 'Create Employer Account' : 'Register & Get OTP',
             ),
           ),
         ],
@@ -385,9 +383,15 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 }
 
 class OtpScreen extends StatefulWidget {
-  const OtpScreen({super.key, this.company, required this.phone});
+  const OtpScreen({
+    super.key,
+    this.company,
+    required this.phone,
+    this.completeRegistration,
+  });
   final Company? company;
   final String phone;
+  final Future<HrAccount> Function(HrAccount)? completeRegistration;
   @override
   State<OtpScreen> createState() => _OtpScreenState();
 }
@@ -418,9 +422,29 @@ class _OtpScreenState extends State<OtpScreen> {
     super.dispose();
   }
 
-  void _complete(HrAccount account) {
+  Future<void> _complete(HrAccount account) async {
     if (!mounted || completed) return;
     completed = true;
+    timeout?.cancel();
+    final register = widget.completeRegistration;
+    if (register != null) {
+      setState(() => busy = true);
+      try {
+        account = await register(account);
+      } catch (failure) {
+        if (!mounted) return;
+        setState(() {
+          completed = false;
+          busy = false;
+          challenge = null;
+          code = '';
+          error = hrAuthError(failure);
+        });
+        return;
+      }
+    }
+    if (!mounted) return;
+    widget.company?.phone = widget.phone;
     _finishAuth(context, account, widget.company);
   }
 
@@ -432,6 +456,9 @@ class _OtpScreenState extends State<OtpScreen> {
     });
     void failed(Object failure) {
       if (!mounted || completed || currentRequest != request) return;
+      if (kDebugMode && failure is FirebaseAuthException) {
+        debugPrint('Firebase OTP request failed: ' + failure.code);
+      }
       timeout?.cancel();
       setState(() {
         busy = false;
@@ -451,6 +478,7 @@ class _OtpScreenState extends State<OtpScreen> {
     try {
       await HrAuthScope.of(context).sendPhoneCode(
         widget.phone,
+        resendToken: challenge?.resendToken,
         onCodeSent: (value) {
           if (!mounted || completed || currentRequest != request) return;
           timeout?.cancel();
@@ -486,7 +514,7 @@ class _OtpScreenState extends State<OtpScreen> {
       error = null;
     });
     try {
-      _complete(await challenge!.confirm(code.trim()));
+      await _complete(await challenge!.confirm(code.trim()));
     } catch (failure) {
       if (mounted) setState(() => error = hrAuthError(failure));
     } finally {
@@ -495,46 +523,57 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(),
-    body: Form(
-      key: form,
-      child: PageBody(
-        children: [
-          const Brand(),
-          heading('Verify Mobile Number'),
-          muted('Continue with ${widget.phone}'),
-          const SizedBox(height: 24),
-          if (challenge != null)
-            AuthInput(
-              label: 'Verification code',
-              keyboard: TextInputType.number,
-              onChanged: (value) => code = value,
-              validator: (value) =>
-                  RegExp(r'^\d{6}$').hasMatch(value?.trim() ?? '')
+  Widget build(BuildContext context) => PopScope<void>(
+    canPop: widget.company == null || !busy,
+    child: Scaffold(
+      appBar: AppBar(),
+      body: Form(
+        key: form,
+        child: PageBody(
+          children: [
+            const Brand(),
+            heading('Verify Mobile Number'),
+            muted('Continue with ${widget.phone}'),
+            const SizedBox(height: 24),
+            if (challenge != null)
+              AuthInput(
+                label: 'Verification code',
+                keyboard: TextInputType.number,
+                onChanged: (value) => code = value,
+                validator: (value) =>
+                    RegExp(r'^\d{6}$').hasMatch(value?.trim() ?? '')
+                    ? null
+                    : 'Enter a six-digit code',
+              ),
+            muted(
+              'By continuing, you agree to receive a verification SMS. Message rates may apply. Google processes your number to prevent spam and abuse.',
+            ),
+            if (error != null) _AuthError(error!),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: busy || challenge == null ? null : _verify,
+              child: Text(
+                busy
+                    ? 'Please wait...'
+                    : widget.company == null
+                    ? 'Verify and sign in'
+                    : 'Verify and create account',
+              ),
+            ),
+            TextButton(
+              onPressed: busy || seconds > 0 ? null : _send,
+              child: Text(
+                seconds > 0 ? 'Resend code in ${seconds}s' : 'Send code again',
+              ),
+            ),
+            TextButton(
+              onPressed: widget.company != null && busy
                   ? null
-                  : 'Enter a six-digit code',
+                  : () => Navigator.of(context).pop(),
+              child: const Text('Use a different phone number'),
             ),
-          muted(
-            'By continuing, you agree to receive a verification SMS. Message rates may apply. Google processes your number to prevent spam and abuse.',
-          ),
-          if (error != null) _AuthError(error!),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: busy || challenge == null ? null : _verify,
-            child: Text(busy ? 'Please wait...' : 'Verify and sign in'),
-          ),
-          TextButton(
-            onPressed: busy || seconds > 0 ? null : _send,
-            child: Text(
-              seconds > 0 ? 'Resend code in ${seconds}s' : 'Send code again',
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Use a different phone number'),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );

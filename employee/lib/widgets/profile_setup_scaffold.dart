@@ -50,7 +50,7 @@ class ProfileSetupScaffold extends StatelessWidget {
                     } else {
                       state.update(() {
                         state.page = 'Profile';
-                        state.tab = 4;
+                        state.tab = state.tabs.indexOf('Profile');
                         state.history.clear();
                       });
                       ui.notice('Profile saved for this session');

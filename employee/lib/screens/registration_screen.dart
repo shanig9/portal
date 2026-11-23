@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../state/employee_controller.dart';
 import '../widgets/auth_widgets.dart';
 import '../services/auth_service.dart';
+import 'phone_login_screen.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key, required this.state});
@@ -24,11 +25,30 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       error = null;
     });
     try {
-      final account = await widget.state.auth.register(name, email, password);
-      if (!mounted) return;
+      final auth = widget.state.auth;
+      final registrationName = name;
+      final registrationEmail = email;
+      final registrationPassword = password;
+      final registrationPhone = indiaOtpPhone(mobile);
+      final account = await Navigator.of(context).push<AuthAccount>(
+        MaterialPageRoute(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: const Text('Verify mobile number')),
+            body: PhoneLoginScreen(
+              state: widget.state,
+              registrationPhone: registrationPhone,
+              completeRegistration: (verified) => auth.register(
+                registrationName,
+                registrationEmail,
+                registrationPassword,
+                verifiedPhoneUid: verified.uid,
+              ),
+            ),
+          ),
+        ),
+      );
+      if (!mounted || account == null) return;
       widget.state.authenticated(account, onboarding: true);
-      // A contact number is not a verified phone sign-in credential.
-      widget.state.data['Mobile Number'] = mobile.trim();
     } catch (failure) {
       if (mounted) setState(() => error = authErrorMessage(failure));
     } finally {
@@ -63,10 +83,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           label: 'Mobile Number',
           icon: Icons.phone_outlined,
           keyboard: TextInputType.phone,
+          prefixText: '+91 ',
           onChanged: (value) => mobile = value,
           validator: (value) =>
-              RegExp(r'^\+?[\d\s-]{10,16}$').hasMatch(value?.trim() ?? '') &&
-                  (value?.replaceAll(RegExp(r'\D'), '').length ?? 0) >= 10
+              RegExp(r'^\+91\d{10}$').hasMatch(indiaOtpPhone(value ?? ''))
               ? null
               : 'Enter a valid mobile number',
         ),
@@ -89,6 +109,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               : 'Passwords do not match',
         ),
         if (error != null) AuthError(message: error!),
+        const Text('We’ll send an SMS code to verify your mobile number.'),
         FilledButton(
           onPressed: busy ? null : _register,
           child: Text(busy ? 'Creating account...' : 'Create Account'),

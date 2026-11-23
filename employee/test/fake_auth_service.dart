@@ -26,11 +26,17 @@ class FakeAuthService implements AuthService {
   Future<AuthAccount> register(
     String name,
     String email,
-    String password,
-  ) async {
+    String password, {
+    required String verifiedPhoneUid,
+  }) async {
     registrationCalls++;
     _check();
-    return account = AuthAccount(uid: 'test-user', name: name, email: email);
+    return account = AuthAccount(
+      uid: verifiedPhoneUid,
+      name: name,
+      email: email,
+      phone: account?.phone,
+    );
   }
 
   @override
@@ -59,6 +65,7 @@ class FakeAuthService implements AuthService {
   @override
   Future<void> sendPhoneCode(
     String phone, {
+    int? resendToken,
     required void Function(PhoneChallenge) onCodeSent,
     required void Function(AuthAccount) onVerified,
     required void Function(Object) onError,

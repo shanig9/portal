@@ -189,6 +189,7 @@ Widget input(
   int lines = 1,
   TextInputType? keyboard,
   int? limit,
+  String? prefixText,
 }) => Padding(
   padding: const EdgeInsets.only(bottom: 18),
   child: TextFormField(
@@ -220,6 +221,7 @@ Widget input(
     decoration: InputDecoration(
       labelText: '$label${required ? ' *' : ''}',
       prefixIcon: lines == 1 ? HrIcon(hrFieldIcon(label)) : null,
+      prefixText: prefixText,
       alignLabelWithHint: lines > 1,
     ),
   ),

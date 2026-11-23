@@ -39,5 +39,6 @@ revoke all on public.career_documents, public.career_applications from anon, aut
 grant select, insert on public.career_documents, public.career_applications to service_role;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('career-documents', 'career-documents', false, 10485760, array['application/pdf']);
+values ('career-documents', 'career-documents', false, 10485760, array['application/pdf'])
+on conflict (id) do nothing;
 commit;

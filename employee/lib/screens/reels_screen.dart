@@ -12,22 +12,25 @@ class ReelsScreen extends StatefulWidget {
   const ReelsScreen({
     super.key,
     required this.state,
-    this.fullScreen = false,
-    this.pageController,
+    required this.immersive,
+    required this.onToggleImmersive,
+    this.service,
   });
   final EmployeeController state;
-  final bool fullScreen;
-  final PageController? pageController;
+  final bool immersive;
+  final VoidCallback onToggleImmersive;
+  final ReelsService? service;
   @override
   State<ReelsScreen> createState() => _ReelsScreenState();
 }
 
 class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
-  final _service = ReelsService();
+  late final _service = widget.service ?? ReelsService();
   final _reels = <Reel>[];
-  late final PageController _pages;
+  final _pages = PageController();
   bool _loading = false, _uploading = false, _foreground = true;
   String? _cursor;
+  String? _loadError;
   int _active = 0;
   Timer? _syncTimer;
   Future<void> _syncPending() async {
@@ -58,7 +61,6 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _pages = widget.pageController ?? PageController();
     WidgetsBinding.instance.addObserver(this);
     _load();
     _syncPending();
@@ -85,7 +87,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   void dispose() {
     _syncTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    if (widget.pageController == null) _pages.dispose();
+    _pages.dispose();
     super.dispose();
   }
 
@@ -93,6 +95,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     if (_loading) return;
     setState(() {
       _loading = true;
+      _loadError = null;
     });
     try {
       if (!more) {
@@ -115,8 +118,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         );
         _cursor = page.nextCursor;
       });
-    } catch (_) {
-      // Retain the visible feed and retry quietly on the next refresh.
+    } catch (error) {
+      if (mounted && _reels.isEmpty) {
+        setState(() => _loadError = ReelsService.errorMessage(error));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -125,7 +130,6 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   Future<void> _upload() async {
     setState(() {
       _uploading = true;
-      _foreground = false;
     });
     try {
       final file = await FilePicker.pickFile(
@@ -145,13 +149,13 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       if (caption == null) return;
       final bytes = await file.readAsBytes();
       final reel = await _service.saveOnDevice(bytes, file.name, caption);
-      _syncPending();
       if (!mounted) return;
       setState(() {
         _reels.insert(0, reel);
         _active = 0;
       });
       if (_pages.hasClients) _pages.jumpToPage(0);
+      unawaited(_syncPending());
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Reel saved. Sharing in the background.')),
       );
@@ -165,7 +169,6 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       if (mounted) {
         setState(() {
           _uploading = false;
-          _foreground = true;
         });
       }
     }
@@ -173,67 +176,116 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final content = Column(
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Wrap(
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text('Career Connect Reels'),
-              IconButton(
-                tooltip: 'Refresh reels',
-                onPressed: _loading || _uploading ? null : () => _load(),
-                icon: const Icon(Icons.refresh),
+        const ColoredBox(color: Colors.black),
+        if (_reels.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text(
+                _loading
+                    ? 'Loading reels…'
+                    : _loadError ?? 'Add a video to start your reels.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white),
               ),
-              FilledButton.icon(
-                onPressed: _uploading ? null : _upload,
-                icon: const Icon(Icons.add),
-                label: Text(_uploading ? 'Saving...' : 'Add video'),
+            ),
+          )
+        else
+          PageView.builder(
+            controller: _pages,
+            scrollDirection: Axis.vertical,
+            itemCount: _reels.length,
+            onPageChanged: (index) {
+              setState(() => _active = index);
+              if (index >= _reels.length - 2 && _cursor != null) {
+                _load(more: true);
+              }
+            },
+            itemBuilder: (context, index) {
+              final reel = _reels[index];
+              return _ReelCard(
+                key: ValueKey(reel.id),
+                reel: reel,
+                active: index == _active && _foreground && !_uploading,
+                liked: widget.state.likedReels.contains(reel.id),
+                onLike: () => widget.state.update(() {
+                  if (!widget.state.likedReels.add(reel.id)) {
+                    widget.state.likedReels.remove(reel.id);
+                  }
+                }),
+                onRetryUpload: _syncPending,
+              );
+            },
+          ),
+        Align(
+          alignment: Alignment.topCenter,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.black87, Colors.transparent],
               ),
-            ],
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      if (!widget.immersive)
+                        IconButton(
+                          tooltip: 'Open posts',
+                          onPressed: () => widget.state.open('Home'),
+                          icon: const Icon(
+                            Icons.article_outlined,
+                            color: Colors.white,
+                          ),
+                        ),
+                      IconButton(
+                        tooltip: 'Refresh reels',
+                        onPressed: _loading || _uploading
+                            ? null
+                            : () {
+                                _syncPending();
+                                _load();
+                              },
+                        icon: const Icon(Icons.refresh, color: Colors.white),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: widget.immersive
+                            ? 'Exit full screen'
+                            : 'Full screen',
+                        onPressed: widget.onToggleImmersive,
+                        icon: Icon(
+                          widget.immersive
+                              ? Icons.fullscreen_exit
+                              : Icons.fullscreen,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: FilledButton.icon(
+                          onPressed: _uploading ? null : _upload,
+                          icon: const Icon(Icons.add),
+                          label: Text(_uploading ? 'Saving…' : 'Add video'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_uploading) const LinearProgressIndicator(),
+                ],
+              ),
+            ),
           ),
         ),
-        if (_uploading) const LinearProgressIndicator(),
-        Expanded(
-          child: _reels.isEmpty
-              ? Center(
-                  child: Text(
-                    _loading
-                        ? 'Loading reels...'
-                        : 'Add a video to start your reels.',
-                  ),
-                )
-              : PageView.builder(
-                  key: ValueKey(_reels.first.id),
-                  controller: _pages,
-                  scrollDirection: Axis.vertical,
-                  itemCount: _reels.length,
-                  onPageChanged: (index) {
-                    setState(() => _active = index);
-                    if (index >= _reels.length - 2 && _cursor != null) {
-                      _load(more: true);
-                    }
-                  },
-                  itemBuilder: (context, index) => _ReelCard(
-                    key: ValueKey(_reels[index].id),
-                    reel: _reels[index],
-                    active: index == _active && _foreground && !_uploading,
-                  ),
-                ),
-        ),
-        if (_cursor != null && !_loading)
-          TextButton(
-            onPressed: () => _load(more: true),
-            child: const Text('Load more reels'),
-          ),
       ],
-    );
-    if (!widget.fullScreen) return content;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Career Connect Reels')),
-      body: content,
     );
   }
 }
@@ -261,7 +313,7 @@ class _CaptionDialogState extends State<_CaptionDialog> {
       maxLines: 3,
       decoration: const InputDecoration(
         labelText: 'Caption',
-        helperText: 'Your video is saved first and shared automatically. Max 60 seconds.',
+        helperText: 'Videos can be up to 60 seconds.',
       ),
     ),
     actions: [
@@ -271,16 +323,25 @@ class _CaptionDialogState extends State<_CaptionDialog> {
       ),
       FilledButton(
         onPressed: () => Navigator.pop(context, _caption.text.trim()),
-        child: const Text('Save on device'),
+        child: const Text('Share reel'),
       ),
     ],
   );
 }
 
 class _ReelCard extends StatefulWidget {
-  const _ReelCard({super.key, required this.reel, required this.active});
+  const _ReelCard({
+    super.key,
+    required this.reel,
+    required this.active,
+    required this.liked,
+    required this.onLike,
+    required this.onRetryUpload,
+  });
   final Reel reel;
   final bool active;
+  final bool liked;
+  final VoidCallback onLike, onRetryUpload;
   @override
   State<_ReelCard> createState() => _ReelCardState();
 }
@@ -355,7 +416,7 @@ class _ReelCardState extends State<_ReelCard> {
         if (widget.reel.type == 'image')
           Image.network(
             widget.reel.url,
-            fit: BoxFit.contain,
+            fit: BoxFit.cover,
             errorBuilder: (_, error, stack) => const Center(
               child: Text(
                 'Image unavailable',
@@ -378,10 +439,13 @@ class _ReelCardState extends State<_ReelCard> {
             ),
           )
         else if (_video?.value.isInitialized == true)
-          Center(
-            child: AspectRatio(
-              aspectRatio: _video!.value.aspectRatio,
-              child: VideoPlayer(_video!),
+          ClipRect(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox.fromSize(
+                size: _video!.value.size,
+                child: VideoPlayer(_video!),
+              ),
             ),
           )
         else if (widget.active)
@@ -399,8 +463,8 @@ class _ReelCardState extends State<_ReelCard> {
         ),
         Positioned(
           left: 20,
-          right: 20,
-          bottom: 24,
+          right: 72,
+          bottom: 18 + MediaQuery.paddingOf(context).bottom,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -418,13 +482,21 @@ class _ReelCardState extends State<_ReelCard> {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white),
               ),
-              if (widget.reel.needsAttention)
-                const Text(
-                  'Saved privately. Choose a supported video up to 60 seconds and 50 MB to share.',
-                  style: TextStyle(color: Colors.white70),
-                )
-              else if (widget.reel.pending)
-                const Text('Sharing…', style: TextStyle(color: Colors.white70)),
+              if (widget.reel.pending) ...[
+                Text(
+                  widget.reel.uploadError ?? 'Saved on this device. Sharing…',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                if (widget.reel.uploadError != null &&
+                    !widget.reel.needsAttention)
+                  TextButton(
+                    onPressed: widget.onRetryUpload,
+                    child: const Text(
+                      'Retry upload',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+              ],
               if (_video?.value.isInitialized == true)
                 Row(
                   children: [
@@ -452,11 +524,20 @@ class _ReelCardState extends State<_ReelCard> {
                     ),
                   ],
                 ),
-              const Text(
-                'Swipe up for more',
-                style: TextStyle(color: Colors.white70),
-              ),
             ],
+          ),
+        ),
+        Positioned(
+          right: 12,
+          bottom: 18 + MediaQuery.paddingOf(context).bottom,
+          child: IconButton.filledTonal(
+            tooltip: widget.liked ? 'Unlike reel' : 'Like reel',
+            onPressed: widget.onLike,
+            icon: Icon(
+              widget.liked ? Icons.favorite : Icons.favorite_border,
+              color: widget.liked ? Colors.redAccent : Colors.white,
+            ),
+            style: IconButton.styleFrom(backgroundColor: Colors.black54),
           ),
         ),
       ],

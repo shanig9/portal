@@ -127,6 +127,7 @@ class AuthField extends StatefulWidget {
     this.password = false,
     this.keyboard,
     this.validator,
+    this.prefixText,
   });
   final String label;
   final IconData icon;
@@ -134,6 +135,7 @@ class AuthField extends StatefulWidget {
   final bool password;
   final TextInputType? keyboard;
   final FormFieldValidator<String>? validator;
+  final String? prefixText;
   @override
   State<AuthField> createState() => _AuthFieldState();
 }
@@ -156,6 +158,10 @@ class _AuthFieldState extends State<AuthField> {
               (value?.trim().isEmpty ?? true) ? 'Enter ${widget.label}' : null,
       decoration: InputDecoration(
         labelText: widget.label,
+        prefixText: widget.prefixText,
+        floatingLabelBehavior: widget.prefixText == null
+            ? null
+            : FloatingLabelBehavior.always,
         prefixIcon: EmployeeIcon(widget.icon),
         filled: true,
         fillColor: Colors.white,

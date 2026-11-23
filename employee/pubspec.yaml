@@ -38,6 +38,8 @@ dependencies:
   firebase_auth: ^7.0.1
   career_connect_chat:
     path: ../chat
+  hr:
+    path: ../hr
   google_sign_in: ^7.2.0
   flutter_svg: ^2.3.4
   http: ^1.6.0

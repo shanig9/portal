@@ -34,9 +34,16 @@ async function stage(name, action) {
   await stage('Firestore job document lookup', () => db.collection('career_jobs').doc('career-connect-connectivity-check').get());
   const client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY,
     { auth: { persistSession: false, autoRefreshToken: false } });
-  await stage('Supabase applications', async () => {
-    const result = await client.from('career_applications').select('id', { head: true }).limit(1);
+  for (const [table, owner] of [['career_applications', 'applicant_uid'], ['career_documents', 'owner_uid']]) {
+    await stage(`Supabase ${table}`, async () => {
+      const result = await client.from(table).select('id').eq(owner, 'career-connect-connectivity-check').limit(1);
+      if (result.error) throw result.error;
+    });
+  }
+  await stage('Supabase career-documents bucket', async () => {
+    const result = await client.storage.getBucket('career-documents');
     if (result.error) throw result.error;
+    if (result.data.public) throw new Error('career-documents bucket must be private');
   });
   // SDK retries can outlive the diagnostic deadline. No records are written.
   process.exit(process.exitCode || 0);

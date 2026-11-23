@@ -41,6 +41,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.2"
+  career_connect_assets:
+    dependency: transitive
+    description:
+      path: "../app aset portal"
+      relative: true
+    source: path
+    version: "1.0.0"
   career_connect_chat:
     dependency: "direct main"
     description:
@@ -364,6 +371,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  hr:
+    dependency: "direct main"
+    description:
+      path: "../hr"
+      relative: true
+    source: path
+    version: "1.0.0+1"
   html:
     dependency: transitive
     description:
